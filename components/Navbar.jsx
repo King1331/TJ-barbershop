@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -43,9 +42,8 @@ export default function Navbar() {
             />
           </div>
           <span className="text-white font-bold text-lg tracking-wide">
-  TJ's Cuts Barbershop
-</span>
-
+            TJ's Cuts Barbershop
+          </span>
         </Link>
 
         {/* DESKTOP NAV */}
@@ -60,11 +58,12 @@ export default function Navbar() {
             </a>
           ))}
 
+          {/* BOTÓN CUADRADO - DESKTOP */}
           <Link
             href="/book-appointment"
             className="
               bg-white text-black 
-              px-6 py-2.5 rounded-full 
+              px-6 py-2.5
               font-semibold text-sm tracking-wider uppercase 
               hover:bg-gray-100 
               transition-all duration-300 
@@ -105,12 +104,13 @@ export default function Navbar() {
                 </a>
               ))}
 
+              {/* BOTÓN CUADRADO - MOBILE */}
               <Link
                 href="/book-appointment"
                 onClick={() => setMobileMenuOpen(false)}
                 className="
                   bg-white text-black 
-                  px-6 py-3 rounded-full 
+                  px-6 py-3
                   font-semibold text-sm tracking-wider uppercase 
                   text-center mt-2
                 "
