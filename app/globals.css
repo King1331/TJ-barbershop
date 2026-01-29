@@ -123,3 +123,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+.react-calendar {
+  background: #111;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  padding: 12px;
+}
+
+.react-calendar__navigation button {
+  color: white;
+}
+
+.react-calendar__tile {
+  color: white;
+}
+
+.react-calendar__tile--active {
+  background: white;
+  color: black;
+  border-radius: 8px;
+}
+
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  text-transform: capitalize;
+  font-size: 0.75rem;
+  color: #aaa;
+}

@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "app/layout.jsx"  ],
+, "app/layout.jsx", "components/ui/button.jsx", "components/ui/calendar.jsx"  ],
   "exclude": ["node_modules"]
 }
