@@ -7,14 +7,13 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           {/* Logo & Name (ACTUALIZADO CON TU IMAGEN) */}
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-800 bg-black flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-black flex items-center justify-center">
               <img
-                src="https://horizons-cdn.hostinger.com/a6ad88d3-3563-473a-998d-e3eef6ee6b67/d0bd8fc323f422f9945c04bfe237af97.png"
+                src="https://i.postimg.cc/6qh2X215/3F07E1B8-921A-4073-94D6-1708D1A74A20.png"
                 alt="TJ's Cuts Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover scale-105"
               />
             </div>
-
             <div>
               <h3 className="text-white font-bold text-lg tracking-wide">
                 TJ's Cuts Barbershop

@@ -43,7 +43,7 @@ export default function LocationSection() {
               {/* Map */}
               <div className="aspect-video relative">
                 <img
-                  src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80"
+                  src="https://i.postimg.cc/fybK1NB6/IMG-5055.avif"
                   alt="Ubicación"
                   className="w-full h-full object-cover opacity-60"
                 />

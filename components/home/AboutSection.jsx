@@ -5,10 +5,12 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const images = [
-  "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&q=80",
-  "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800&q=80",
-  "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800&q=80",
-  "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=800&q=80",
+  "https://i.postimg.cc/vBTxsZwW/IMG-2971.jpg",
+  "https://i.postimg.cc/8544y5mD/IMG-4516.avif",
+  "https://i.postimg.cc/fyFxF0tQ/IMG-5167.avif",
+  "https://i.postimg.cc/GtNkNsB6/IMG-5307.avif",
+  "https://i.postimg.cc/j5cc854R/IMG-5130.avif",
+  "https://i.postimg.cc/BvKQcPsb/IMG-4186.avif",
 ];
 
 export default function AboutSection() {

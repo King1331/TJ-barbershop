@@ -26,21 +26,20 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled
-          ? "bg-black/95 backdrop-blur-md py-3"
-          : "bg-transparent py-5"
+        isScrolled ? "bg-black/95 backdrop-blur-md py-3" : "bg-transparent py-5"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* LOGO */}
         <Link href="/" className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-800 bg-black flex items-center justify-center transition-transform duration-300 hover:scale-105">
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-black flex items-center justify-center transition-transform duration-300 hover:scale-105">
             <img
-              src="https://horizons-cdn.hostinger.com/a6ad88d3-3563-473a-998d-e3eef6ee6b67/d0bd8fc323f422f9945c04bfe237af97.png"
+              src="https://i.postimg.cc/6qh2X215/3F07E1B8-921A-4073-94D6-1708D1A74A20.png"
               alt="TJ's Cuts Logo"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover scale-105"
             />
           </div>
+
           <span className="text-white font-bold text-lg tracking-wide">
             TJ's Cuts Barbershop
           </span>
@@ -49,16 +48,16 @@ export default function Navbar() {
         {/* DESKTOP NAV */}
         <div className="hidden lg:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.name}
               href={link.href}
               className="text-gray-300 hover:text-amber-400 transition-colors duration-300 text-sm font-medium tracking-wider uppercase"
             >
               {link.name}
-            </a>
+            </Link>
           ))}
 
-          {/* BOTÓN CUADRADO - DESKTOP */}
+          {/* BOTÓN CITA */}
           <Link
             href="/book-appointment"
             className="
@@ -94,17 +93,17 @@ export default function Navbar() {
           >
             <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className="text-gray-300 hover:text-amber-400 transition-colors duration-300 text-sm font-medium tracking-wider uppercase py-2"
                 >
                   {link.name}
-                </a>
+                </Link>
               ))}
 
-              {/* BOTÓN CUADRADO - MOBILE */}
+              {/* BOTÓN CITA - MOBILE */}
               <Link
                 href="/book-appointment"
                 onClick={() => setMobileMenuOpen(false)}

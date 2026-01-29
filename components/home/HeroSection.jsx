@@ -12,7 +12,7 @@ export default function HeroSection() {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage:
-            "url(https://images.unsplash.com/photo-1582483720544-4068701c073d)",
+            "url(https://i.postimg.cc/8kbVLm8c/IMG-5529.avif)",
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-[#0A0A0A]" />
