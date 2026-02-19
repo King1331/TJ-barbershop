@@ -92,14 +92,14 @@ export default function AboutSection() {
               {/* Flechas */}
               <button
                 onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-amber-500 hover:text-black transition-all duration-300"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white-500 hover:text-black transition-all duration-300"
               >
                 <ChevronLeft size={24} />
               </button>
 
               <button
                 onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-amber-500 hover:text-black transition-all duration-300"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white-500 hover:text-black transition-all duration-300"
               >
                 <ChevronRight size={24} />
               </button>

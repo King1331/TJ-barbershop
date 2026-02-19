@@ -12,7 +12,7 @@ export default function LocationSection() {
   ];
 
   return (
-    <section id="location" className="py-24 bg-black">
+    <section id="book" className="py-24 bg-black">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <motion.div

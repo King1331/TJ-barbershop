@@ -21,12 +21,15 @@ export default function Navbar() {
     { name: "Acerca de Nosotros", href: "/#about" },
     { name: "Servicios", href: "/#services" },
     { name: "Productos", href: "/products" },
+    { name: "Admin", href: "/admin_login/login" },
   ];
 
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled ? "bg-black/95 backdrop-blur-md py-3" : "bg-transparent py-5"
+        isScrolled
+          ? "bg-black/95 backdrop-blur-md py-3"
+          : "bg-transparent py-5"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -41,7 +44,7 @@ export default function Navbar() {
           </div>
 
           <span className="text-white font-bold text-lg tracking-wide">
-            TJ's Cuts Barbershop
+            TJ&apos;s Cuts Barbershop
           </span>
         </Link>
 
@@ -51,7 +54,11 @@ export default function Navbar() {
             <Link
               key={link.name}
               href={link.href}
-              className="text-gray-300 hover:text-amber-400 transition-colors duration-300 text-sm font-medium tracking-wider uppercase"
+              className={`text-sm font-medium tracking-wider uppercase transition-colors duration-300 ${
+                link.name === "Admin"
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-300 hover:text-white"
+              }`}
             >
               {link.name}
             </Link>
@@ -61,11 +68,11 @@ export default function Navbar() {
           <Link
             href="/book-appointment"
             className="
-              bg-white text-black 
+              bg-white text-black
               px-6 py-2.5
-              font-semibold text-sm tracking-wider uppercase 
-              hover:bg-gray-100 
-              transition-all duration-300 
+              font-semibold text-sm tracking-wider uppercase
+              hover:bg-gray-100
+              transition-all duration-300
               shadow-lg shadow-white/10
             "
           >
@@ -97,7 +104,11 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-gray-300 hover:text-amber-400 transition-colors duration-300 text-sm font-medium tracking-wider uppercase py-2"
+                  className={`text-sm font-medium tracking-wider uppercase py-2 transition-colors duration-300 ${
+                    link.name === "Admin"
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-300 hover:text-white"
+                  }`}
                 >
                   {link.name}
                 </Link>
@@ -108,9 +119,9 @@ export default function Navbar() {
                 href="/book-appointment"
                 onClick={() => setMobileMenuOpen(false)}
                 className="
-                  bg-white text-black 
+                  bg-white text-black
                   px-6 py-3
-                  font-semibold text-sm tracking-wider uppercase 
+                  font-semibold text-sm tracking-wider uppercase
                   text-center mt-2
                 "
               >

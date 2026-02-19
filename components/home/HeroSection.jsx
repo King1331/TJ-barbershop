@@ -44,17 +44,17 @@ export default function HeroSection() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="#book"
+              href="/book-appointment"
               className="bg-white text-black px-8 py-4 font-bold text-sm tracking-wider uppercase hover:bg-gray-200 transition-all duration-300 shadow-xl"
             >
               Agende su cita
             </Link>
 
             <a
-              href="#about"
+              href="#book"
               className="border border-white text-white px-8 py-4 font-bold text-sm tracking-wider uppercase hover:bg-white/10 transition-all duration-300"
             >
-              Conócenos
+              Encuentrános
             </a>
           </div>
         </motion.div>
