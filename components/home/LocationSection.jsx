@@ -1,8 +1,15 @@
-
 "use client";
 
 import { motion } from "framer-motion";
-import { MapPin, Clock, Phone, Mail } from "lucide-react";
+import {
+  MapPin,
+  Clock,
+  Phone,
+  Mail,
+  ExternalLink,
+  CalendarDays,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function LocationSection() {
   const schedule = [
@@ -25,7 +32,6 @@ export default function LocationSection() {
           <span className="text-white text-sm font-semibold tracking-[0.3em] uppercase mb-4 block">
             Encuéntranos
           </span>
-
           <h2 className="text-4xl md:text-5xl font-black text-white">
             Ubicación y Horarios
           </h2>
@@ -38,6 +44,7 @@ export default function LocationSection() {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            className="relative"
           >
             <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
               {/* Map */}
@@ -45,17 +52,27 @@ export default function LocationSection() {
                 <img
                   src="https://i.postimg.cc/fybK1NB6/IMG-5055.avif"
                   alt="Ubicación"
-                  className="w-full h-full object-cover opacity-60"
+                  className="w-full h-full object-cover opacity-50"
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MapPin size={28} className="text-black" />
-                    </div>
-                    <p className="text-white font-semibold text-lg">
-                      TJ&apos;s Cuts Barbershop
-                    </p>
+
+                <div className="absolute inset-0 bg-black/40" />
+
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
+                    <MapPin size={28} className="text-black" />
                   </div>
+                  <p className="text-white font-bold text-lg mb-3">
+                    TJ&apos;s Cuts Barbershop
+                  </p>
+
+                  <a
+                    href="https://maps.google.com"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 bg-white text-black px-5 py-2 rounded-full text-xs font-bold uppercase hover:bg-gray-200 transition"
+                  >
+                    Ver en Maps
+                    <ExternalLink size={14} />
+                  </a>
                 </div>
               </div>
 
@@ -64,8 +81,9 @@ export default function LocationSection() {
                 <InfoItem
                   icon={<MapPin size={20} />}
                   title="Dirección"
-                  text="Calle Principal #123, Centro Comercial Plaza Norte
-                  Local 45, Ciudad, País"
+                  text={`Calle Principal #123
+Centro Comercial Plaza Norte
+Local 45`}
                 />
                 <InfoItem
                   icon={<Phone size={20} />}
@@ -120,13 +138,14 @@ export default function LocationSection() {
                 ))}
               </div>
 
-              <div className="mt-8 p-6 bg-white/5 border border-white/10 rounded-2xl">
-                <p className="text-white font-semibold mb-2">💈 Consejo</p>
-                <p className="text-gray-400 text-sm">
-                  Agenda tu cita con anticipación, especialmente los fines de
-                  semana.
-                </p>
-              </div>
+              {/* CTA */}
+              <Link
+                href="/book-appointment"
+                className="mt-10 inline-flex items-center justify-center gap-2 w-full bg-white text-black px-6 py-4 rounded-full font-bold uppercase text-sm hover:bg-gray-200 transition"
+              >
+                <CalendarDays size={18} />
+                Agendar cita
+              </Link>
             </div>
           </motion.div>
         </div>
