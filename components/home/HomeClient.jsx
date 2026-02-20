@@ -15,8 +15,8 @@ export default function HomeClient() {
       <HeroSection />
       <AboutSection />
       <ServicesSection />
-      <LocationSection />
       <BarbersSection />
+      <LocationSection />
     </main>
   );
 }

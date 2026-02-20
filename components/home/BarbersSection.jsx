@@ -15,10 +15,9 @@ export default function BarbersSection() {
       try {
         const snapshot = await getDocs(collection(db, "barber"));
 
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((barber) => barber.visible !== false); // ← ocultos no se muestran
 
         setBarbers(data);
       } catch (error) {
@@ -79,11 +78,10 @@ export default function BarbersSection() {
 
                   {barber.quote && (
                     <p className="text-gray-400 italic text-sm mt-3">
-                      “{barber.quote}”
+                      "{barber.quote}"
                     </p>
                   )}
 
-                  {/* ✅ BOTÓN AGREGADO (sin cambiar layout) */}
                   <Link
                     href={`/book-appointment?barber=${barber.id}`}
                     className="inline-flex items-center gap-2 mt-4 bg-white text-black px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider hover:bg-gray-200 transition"
