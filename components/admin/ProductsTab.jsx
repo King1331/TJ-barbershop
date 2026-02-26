@@ -132,7 +132,7 @@ export default function ProductsTab() {
                       {product.name}
                     </h3>
                     <p className="text-white font-bold text-xl mt-1">
-                      ${Number(product.price).toFixed(2)}
+                      ₡{Number(product.price).toFixed(2)}
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
                       {categoryLabels[product.category] || product.category}
@@ -202,7 +202,7 @@ export default function ProductsTab() {
               {/* PRECIO + CATEGORÍA */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Precio ($)</label>
+                  <label className="text-xs text-gray-400">Precio (₡)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -243,12 +243,12 @@ export default function ProductsTab() {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, in_stock: !formData.in_stock })}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${
+                  className={`w-11 h-6 rounded-full transition-colors relative ₡{
                     formData.in_stock ? "bg-white" : "bg-white/20"
                   }`}
                 >
                   <span
-                    className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
+                    className={`absolute top-1 w-4 h-4 rounded-full transition-all ₡{
                       formData.in_stock ? "bg-black left-6" : "bg-white left-1"
                     }`}
                   />

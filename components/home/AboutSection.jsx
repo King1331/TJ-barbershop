@@ -68,14 +68,14 @@ export default function AboutSection() {
                 la barbería tradicional donde la <span className="text-white font-medium">calidad, no la cantidad</span>, es lo primordial.
               </p>
               <p>
-                En un ambiente amigable y relajado, ofrecemos servicio con y sin cita previa.
+                En un ambiente amigable y relajado, ofrecemos servicio con cita previa.
                 Nuestro equipo es seleccionado cuidadosamente por su expertise y habilidades
                 excepcionales en la industria.
               </p>
               <p>
                 No solo cortamos y afeitamos. Contamos con tratamientos faciales, diseño de
-                barba y coloración — cada servicio personalizado según el tipo de cabello,
-                piel y preferencias del cliente.
+                barba y trenzado — cada servicio personalizado según el tipo de cabello
+                 y preferencias del cliente.
               </p>
             </div>
 

@@ -66,7 +66,7 @@ export default function LocationSection() {
                   </p>
 
                   <a
-                    href="https://maps.google.com"
+                    href="https://www.google.com/maps/place/Chicago+Barber+Studio/@9.9318706,-84.0479822,17z/data=!3m1!4b1!4m6!3m5!1s0x8fa0e39107ba71bf:0xe3a9c38d08747e7e!8m2!3d9.9318706!4d-84.0454073!16s%2Fg%2F11w3gqns0v?entry=ttu&g_ep=EgoyMDI2MDIyMy4wIKXMDSoASAFQAw%3D%3D"
                     target="_blank"
                     className="inline-flex items-center gap-2 bg-white text-black px-5 py-2 rounded-full text-xs font-bold uppercase hover:bg-gray-200 transition"
                   >
@@ -81,14 +81,12 @@ export default function LocationSection() {
                 <InfoItem
                   icon={<MapPin size={20} />}
                   title="Dirección"
-                  text={`Calle Principal #123
-Centro Comercial Plaza Norte
-Local 45`}
+                  text={`Centro Comercial Los Laureles Local #2 San José, San Pedro, 1501`}
                 />
                 <InfoItem
                   icon={<Phone size={20} />}
                   title="Teléfono"
-                  text="+1 (555) 123-4567"
+                  text="+506 7017 5462"
                 />
                 <InfoItem
                   icon={<Mail size={20} />}

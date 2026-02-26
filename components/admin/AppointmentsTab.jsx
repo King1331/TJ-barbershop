@@ -218,8 +218,8 @@ export default function AppointmentsTab() {
       {/* METRICS */}
       <div className="grid grid-cols-3 gap-4">
         <Metric title="Citas"    value={totalAppointments} />
-        <Metric title="Ingresos" value={`$${totalIncome.toFixed(2)}`} />
-        <Metric title="Promedio" value={`$${avgIncome.toFixed(2)}`} />
+        <Metric title="Ingresos" value={`₡${totalIncome.toFixed(2)}`} />
+        <Metric title="Promedio" value={`₡${avgIncome.toFixed(2)}`} />
       </div>
 
       {/* FILTER + CREAR */}

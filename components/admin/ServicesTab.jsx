@@ -155,9 +155,7 @@ export default function ServicesTab() {
     <div className="space-y-6">
       {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-white">
-          Servicios
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Servicios</h2>
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -170,16 +168,11 @@ export default function ServicesTab() {
           <DialogContent className="bg-[#111] border-white/10 text-white">
             <DialogHeader>
               <DialogTitle>
-                {editingService
-                  ? "Editar Servicio"
-                  : "Nuevo Servicio"}
+                {editingService ? "Editar Servicio" : "Nuevo Servicio"}
               </DialogTitle>
             </DialogHeader>
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-            >
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label>Nombre</Label>
                 <Input
@@ -273,9 +266,8 @@ export default function ServicesTab() {
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={handleClose}
-                  className="flex-1"
+                  className="flex-1 bg-white text-black hover:bg-gray-200"
                 >
                   Cancelar
                 </Button>
@@ -294,26 +286,17 @@ export default function ServicesTab() {
       {/* LIST */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map((service) => (
-          <Card
-            key={service.id}
-            className="bg-white/5 border-white/10"
-          >
+          <Card key={service.id} className="bg-white/5 border-white/10">
             <CardHeader>
               <div className="flex justify-between">
                 <div>
-                  <CardTitle className="text-white">
-                    {service.name}
-                  </CardTitle>
-                  <p className="text-white font-bold">
-                    ₡{service.price}
-                  </p>
+                  <CardTitle className="text-white">{service.name}</CardTitle>
+                  <p className="text-white font-bold">₡{service.price}</p>
                 </div>
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() =>
-                      toggleVisibility(service)
-                    }
+                    onClick={() => toggleVisibility(service)}
                     className="text-gray-400 hover:text-white"
                   >
                     {service.visible !== false ? (
@@ -329,9 +312,7 @@ export default function ServicesTab() {
                     <Edit size={18} />
                   </button>
                   <button
-                    onClick={() =>
-                      handleDelete(service.id)
-                    }
+                    onClick={() => handleDelete(service.id)}
                     className="text-gray-400 hover:text-red-400"
                   >
                     <Trash2 size={18} />
@@ -347,9 +328,7 @@ export default function ServicesTab() {
                   className="w-full h-32 object-cover rounded mb-3"
                 />
               )}
-              <p className="text-gray-400 text-sm">
-                {service.description}
-              </p>
+              <p className="text-gray-400 text-sm">{service.description}</p>
               {service.duration && (
                 <p className="text-gray-500 text-xs mt-1">
                   {service.duration} minutos
