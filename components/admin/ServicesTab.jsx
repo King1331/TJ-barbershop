@@ -291,7 +291,8 @@ export default function ServicesTab() {
               <div className="flex justify-between">
                 <div>
                   <CardTitle className="text-white">{service.name}</CardTitle>
-                  <p className="text-white font-bold">₡{service.price}</p>
+                  {Number(service.price).toLocaleString("es-CR")}₡
+
                 </div>
 
                 <div className="flex gap-2">

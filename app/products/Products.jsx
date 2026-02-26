@@ -84,7 +84,7 @@ export default function Products() {
                 <DropdownMenuItem
                   key={category.value}
                   onClick={() => setSelectedCategory(category.value)}
-                  className={`cursor-pointer hover:bg-white/10 ${
+                  className={`cursor-pointer hover:bg-white/10 ₡{
                     selectedCategory === category.value
                       ? "text-white font-semibold"
                       : "text-gray-400"
@@ -141,7 +141,7 @@ export default function Products() {
                         {product.description}
                       </p>
                       <span className="text-xl font-black text-white">
-                        ${product.price.toFixed(2)}
+                    {Number(product.price).toLocaleString("es-CR")}₡
                       </span>
                     </div>
                   </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import db from "@/lib/firebase/firestore";
 import { motion } from "framer-motion";
 import { MessageCircle, ChevronLeft } from "lucide-react";
@@ -22,18 +22,28 @@ export default function ProductDetail() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /* ── FETCH ── */
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setProduct(null);
+      setRelatedProducts([]);
+
       const snap = await getDocs(collection(db, "products"));
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      const found = all.find((p) => p.id === productId) || all[0];
+      const found = productId
+        ? all.find((p) => p.id === productId)
+        : all[0];
+
+      if (!found) {
+        setLoading(false);
+        return;
+      }
+
       setProduct(found);
 
       const related = all
-        .filter((p) => p.category === found?.category && p.id !== found?.id)
+        .filter((p) => p.category === found.category && p.id !== found.id)
         .slice(0, 4);
       setRelatedProducts(related);
 
@@ -43,7 +53,6 @@ export default function ProductDetail() {
     fetchData();
   }, [productId]);
 
-  /* ── LOADING ── */
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] pt-24 pb-16">
@@ -69,7 +78,7 @@ export default function ProductDetail() {
     );
   }
 
-  const whatsappMessage = `Hola! Me interesa cotizar el producto: ${product.name} - $${product.price}`;
+  const whatsappMessage = `Hola! Me interesa cotizar el producto: ${product.name} - ${Number(product.price).toLocaleString("es-CR")}₡`;
   const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
@@ -114,7 +123,6 @@ export default function ProductDetail() {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col"
           >
-            {/* categoría */}
             <span className="text-xs font-semibold tracking-widest uppercase text-gray-500 mb-3">
               {categoryLabels[product.category] || product.category}
             </span>
@@ -124,10 +132,9 @@ export default function ProductDetail() {
             </h1>
 
             <span className="text-4xl font-black text-white mb-8">
-              ${Number(product.price).toFixed(2)}
+              {Number(product.price).toLocaleString("es-CR")}₡
             </span>
 
-            {/* descripción */}
             <div className="mb-8">
               <h3 className="text-white font-semibold mb-3">Descripcion del producto</h3>
               <p className="text-gray-400 leading-relaxed">
@@ -135,7 +142,6 @@ export default function ProductDetail() {
               </p>
             </div>
 
-            {/* stock */}
             <div className="flex items-center gap-2 mb-8">
               {product.in_stock !== false ? (
                 <>
@@ -150,19 +156,17 @@ export default function ProductDetail() {
               )}
             </div>
 
-            {/* línea decorativa */}
             <div className="w-full h-px bg-white/10 mb-8" />
 
-            {/* WHATSAPP */}
-<a
-  href={whatsappUrl}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center justify-center gap-3 bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-sm tracking-wider uppercase hover:bg-[#20bd5a] transition-all duration-300 shadow-lg"
->
-  <MessageCircle size={20} />
-  Cotice con nosotros
-</a>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-3 bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-sm tracking-wider uppercase hover:bg-[#20bd5a] transition-all duration-300 shadow-lg"
+            >
+              <MessageCircle size={20} />
+              Cotice con nosotros
+            </a>
           </motion.div>
         </div>
 
@@ -172,7 +176,6 @@ export default function ProductDetail() {
             <h2 className="text-2xl md:text-3xl font-black text-white mb-8">
               Te podria gustar
             </h2>
-
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((rel, index) => (
                 <motion.div
@@ -182,7 +185,7 @@ export default function ProductDetail() {
                   transition={{ delay: index * 0.1 }}
                 >
                   <Link
-                    href={`/products/${rel.id}`}
+                    href={`/products/ProductDetail?id=${rel.id}`}
                     className="group block bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-white/30 transition-all duration-500"
                   >
                     <div className="relative aspect-square overflow-hidden bg-black">
@@ -197,7 +200,7 @@ export default function ProductDetail() {
                         {rel.name}
                       </h3>
                       <span className="text-xl font-black text-white">
-                        ${Number(rel.price).toFixed(2)}
+                        {Number(rel.price).toLocaleString("es-CR")}₡
                       </span>
                     </div>
                   </Link>
