@@ -108,7 +108,7 @@ export default function ServicesSection() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-black text-white">
-                      ${service.price}
+                      ₡{service.price}
                     </span>
 
                     <div className="flex items-center gap-2 text-gray-400 text-sm">

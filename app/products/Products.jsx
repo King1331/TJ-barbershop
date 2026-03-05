@@ -141,7 +141,7 @@ export default function Products() {
                         {product.description}
                       </p>
                       <span className="text-xl font-black text-white">
-                    {Number(product.price).toLocaleString("es-CR")}₡
+                        ₡{Number(product.price).toLocaleString("es-CR")}
                       </span>
                     </div>
                   </Link>

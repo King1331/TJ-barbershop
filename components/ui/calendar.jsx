@@ -8,6 +8,7 @@ export default function DarkCalendar({
   onChange,
   minDate,
   maxDate,
+  tileDisabled,
 }) {
   return (
     <div className="dark-calendar">
@@ -16,13 +17,13 @@ export default function DarkCalendar({
         onChange={onChange}
         minDate={minDate}
         maxDate={maxDate}
+        tileDisabled={tileDisabled}
         locale="es-ES"
         calendarType="gregory"
         next2Label={null}
         prev2Label={null}
       />
 
-      {/* ESTILOS */}
       <style jsx global>{`
         .dark-calendar {
           background: #0a0a0a;
@@ -38,7 +39,6 @@ export default function DarkCalendar({
           width: 100%;
         }
 
-        /* ---------- HEADER ---------- */
         .react-calendar__navigation button {
           background: transparent !important;
           color: white;
@@ -53,10 +53,8 @@ export default function DarkCalendar({
 
         .react-calendar__navigation button:hover {
           background: rgba(255, 255, 255, 0.1) !important;
-
         }
-          
-        /* ---------- DAYS HEADER ---------- */
+
         .react-calendar__month-view__weekdays {
           display: grid !important;
           grid-template-columns: repeat(7, 1fr);
@@ -70,7 +68,6 @@ export default function DarkCalendar({
           text-transform: capitalize;
         }
 
-        /* ---------- DAYS GRID ---------- */
         .react-calendar__month-view__days {
           display: grid !important;
           grid-template-columns: repeat(7, 1fr);
@@ -101,6 +98,7 @@ export default function DarkCalendar({
         .react-calendar__tile:disabled {
           color: rgba(255, 255, 255, 0.2);
           background: transparent;
+          cursor: not-allowed;
         }
       `}</style>
     </div>

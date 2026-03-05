@@ -8,11 +8,7 @@ import { format } from "date-fns";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import db from "@/lib/firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  CheckCircle,
-  ChevronRight,
-  ChevronLeft,
-} from "lucide-react";
+import { CheckCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import { es } from "date-fns/locale";
 
 /* ── HORARIOS ── */
@@ -64,6 +60,46 @@ const getSlotsForDate = (date) => {
 
 const toDateStr = (date) => format(date, "yyyy-MM-dd");
 
+/* ── Calcula qué slots están bloqueados dado las citas existentes ── */
+const getBlockedSlots = (appointments, dateStr, serviceDurationMin) => {
+  const blocked = new Set();
+
+  appointments
+    .filter((a) => a.date === dateStr)
+    .forEach((a) => {
+      const startMin = toMinutes(a.time);
+      const duration = Number(a.service_duration || a.duration || 30);
+      // Bloquea todos los slots que esta cita ocupa
+      ALL_SLOTS.forEach((slot) => {
+        const slotMin = toMinutes(slot);
+        if (slotMin >= startMin && slotMin < startMin + duration) {
+          blocked.add(slot);
+        }
+      });
+    });
+
+  return blocked;
+};
+
+/* ── Verifica si un slot tiene espacio suficiente para la duración del servicio ── */
+const slotHasRoom = (slot, blockedSlots, scheduleEndMin, serviceDurationMin) => {
+  const startMin = toMinutes(slot);
+  const endMin   = startMin + serviceDurationMin;
+
+  // No cabe antes del cierre
+  if (endMin > scheduleEndMin) return false;
+
+  // Algún slot intermedio está bloqueado
+  for (const s of ALL_SLOTS) {
+    const m = toMinutes(s);
+    if (m >= startMin && m < endMin) {
+      if (blockedSlots.has(s)) return false;
+    }
+  }
+
+  return true;
+};
+
 export default function BookAppointment() {
   const searchParams = useSearchParams();
   const preselectedBarberId = searchParams.get("barber");
@@ -79,6 +115,7 @@ export default function BookAppointment() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -104,27 +141,36 @@ export default function BookAppointment() {
     fetchData();
   }, [preselectedBarberId]);
 
-  /* ── SLOTS disponibles para la fecha seleccionada ── */
+  /* ── SLOTS disponibles para la fecha y servicio seleccionado ── */
   const availableSlots = (() => {
-    if (!selectedDate) return [];
+    if (!selectedDate || !selectedService) return [];
+
     const slots = getSlotsForDate(selectedDate);
     const dateStr = toDateStr(selectedDate);
-    const taken = appointments
-      .filter((a) => a.date === dateStr)
-      .map((a) => a.time);
-    return slots.map((slot) => ({ slot, taken: taken.includes(slot) }));
+    const serviceDuration = Number(selectedService.duration || 30);
+    const day = selectedDate.getDay();
+    const scheduleEndMin = toMinutes(SCHEDULE[day]?.end || "8:00 PM");
+
+    const blockedSlots = getBlockedSlots(appointments, dateStr, serviceDuration);
+
+    return slots.map((slot) => ({
+      slot,
+      taken: !slotHasRoom(slot, blockedSlots, scheduleEndMin, serviceDuration),
+    }));
   })();
 
   const allSlotsTaken =
     availableSlots.length > 0 && availableSlots.every((s) => s.taken);
 
-  /* ── tileDisabled para el calendario ── */
+  /* ── tileDisabled ── */
   const tileDisabled = ({ date }) => {
     if (date.getDay() === 0) return true;
-    const dateStr = toDateStr(date);
+    const dateStr = format(date, "yyyy-MM-dd");
     const slots = getSlotsForDate(date);
-    const taken = appointments.filter((a) => a.date === dateStr).map((a) => a.time);
-    return slots.length > 0 && slots.every((s) => taken.includes(s));
+    const serviceDuration = Number(selectedService?.duration || 30);
+    const scheduleEndMin = toMinutes(SCHEDULE[date.getDay()]?.end || "8:00 PM");
+    const blockedSlots = getBlockedSlots(appointments, dateStr, serviceDuration);
+    return slots.length > 0 && slots.every((s) => !slotHasRoom(s, blockedSlots, scheduleEndMin, serviceDuration));
   };
 
   /* ── canProceed ── */
@@ -134,7 +180,7 @@ export default function BookAppointment() {
       case 2: return !!selectedService;
       case 3: return !!selectedDate && selectedDate.getDay() !== 0 && !allSlotsTaken;
       case 4: return !!selectedTime;
-      case 5: return clientName.trim() && clientEmail.trim();
+      case 5: return clientName.trim() && clientEmail.trim() && clientPhone.trim();
       default: return false;
     }
   };
@@ -148,10 +194,12 @@ export default function BookAppointment() {
       service_id: selectedService.id,
       service_name: selectedService.name,
       service_price: selectedService.price,
+      service_duration: selectedService.duration,
       date: toDateStr(selectedDate),
       time: selectedTime,
       client_name: clientName,
       client_email: clientEmail,
+      client_phone: clientPhone,
       status: "pendiente",
       created_at: new Date(),
     });
@@ -160,39 +208,32 @@ export default function BookAppointment() {
   };
 
   /* ── SUCCESS ── */
- if (isComplete) {
-  return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-6">
-      <div className="text-center max-w-md">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
-
-        <h1 className="text-3xl font-black text-white mb-4">
-          Cita confirmada!
-        </h1>
-
-        <p className="text-gray-400 mb-6">
-          Te esperamos el{" "}
-          <span className="text-white font-semibold">
-            {format(selectedDate, "PPP", { locale: es })}
-          </span>{" "}
-          a las{" "}
-          <span className="text-white font-semibold">
-            {selectedTime}
-          </span>
-        </p>
-
-        {/* BOTÓN REAL */}
-        <button
-          type="button"
-          onClick={() => (window.location.href = "/")}
-          className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
-        >
-          Volver al inicio
-        </button>
+  if (isComplete) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-black text-white mb-4">Cita confirmada!</h1>
+          <p className="text-gray-400 mb-6">
+            Te esperamos el{" "}
+            <span className="text-white font-semibold">
+              {format(selectedDate, "PPP", { locale: es })}
+            </span>{" "}
+            a las{" "}
+            <span className="text-white font-semibold">{selectedTime}</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/")}
+            className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
+          >
+            Volver al inicio
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
   /* ── UI ── */
   return (
     <div className="min-h-screen bg-[#0A0A0A] pt-24 pb-16">
@@ -245,7 +286,7 @@ export default function BookAppointment() {
                   {services.map((service) => (
                     <button
                       key={service.id}
-                      onClick={() => setSelectedService(service)}
+                      onClick={() => { setSelectedService(service); setSelectedTime(null); }}
                       className={`p-5 rounded-2xl border text-left ${
                         selectedService?.id === service.id
                           ? "border-white bg-white/10"
@@ -254,9 +295,13 @@ export default function BookAppointment() {
                     >
                       <div className="flex justify-between">
                         <span className="text-white font-semibold">{service.name}</span>
-                        <span className="text-white font-bold">₡{service.price}</span>
+                        <span className="text-white font-bold">₡{Number(service.price).toLocaleString("es-CR")}</span>
                       </div>
-                      <p className="text-gray-400 text-sm">{service.duration || 30} min</p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        {service.duration >= 60
+                          ? `${service.duration / 60} hora${service.duration / 60 > 1 ? "s" : ""}`
+                          : `${service.duration} min`}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -309,7 +354,9 @@ export default function BookAppointment() {
                   Selecciona la hora
                 </h2>
                 <p className="text-gray-500 text-sm mb-6">
-                  {format(selectedDate, "PPP", { locale: es })}
+                  {format(selectedDate, "PPP", { locale: es })} — {selectedService?.name} ({selectedService?.duration >= 60
+                    ? `${selectedService.duration / 60}h`
+                    : `${selectedService?.duration}min`})
                 </p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {availableSlots.map(({ slot, taken }) => (
@@ -331,10 +378,8 @@ export default function BookAppointment() {
                 </div>
                 <div className="flex gap-4 mt-4">
                   <span className="flex items-center gap-1 text-xs text-gray-500">
-                    <span className="w-3 h-3 rounded bg-white/5 inline-block" /> Ocupado
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-gray-500">
-                    <span className="w-3 h-3 rounded bg-white/10 inline-block" /> Disponible
+                    <span className="w-3 h-3 rounded bg-white/5 inline-block" />
+                    <span className="line-through">Ocupado</span>
                   </span>
                   <span className="flex items-center gap-1 text-xs text-gray-500">
                     <span className="w-3 h-3 rounded bg-white inline-block" /> Seleccionado
@@ -359,6 +404,13 @@ export default function BookAppointment() {
                     placeholder="Correo electronico"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                  <Input
+                    type="tel"
+                    placeholder="Numero de telefono"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
                     className="bg-white/5 border-white/10 text-white"
                   />
                 </div>
