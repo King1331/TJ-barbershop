@@ -6,7 +6,7 @@ import {
 import db from "@/lib/firebase/firestore";
 import { format, isToday, isThisWeek } from "date-fns";
 import { es } from "date-fns/locale";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 const MONTHS = [
   { value: 0, label: "Enero" },
@@ -27,16 +27,15 @@ const YEARS = [2026, 2027, 2028, 2029, 2030];
 
 const SCHEDULE = {
   0: null,
-  1: { start: "9:00 AM", end: "8:00 PM" },
-  2: { start: "9:00 AM", end: "8:00 PM" },
-  3: { start: "9:00 AM", end: "8:00 PM" },
-  4: { start: "9:00 AM", end: "8:00 PM" },
-  5: { start: "9:00 AM", end: "8:00 PM" },
-  6: { start: "9:00 AM", end: "6:00 PM" },
+  1: { start: "10:00 AM", end: "8:00 PM" },
+  2: { start: "10:00 AM", end: "8:00 PM" },
+  3: { start: "10:00 AM", end: "8:00 PM" },
+  4: { start: "10:00 AM", end: "8:00 PM" },
+  5: { start: "10:00 AM", end: "8:00 PM" },
+  6: { start: "10:00 AM", end: "8:00 PM" },
 };
 
 const ALL_SLOTS = [
-  "9:00 AM",  "9:30 AM",
   "10:00 AM", "10:30 AM",
   "11:00 AM", "11:30 AM",
   "12:00 PM", "12:30 PM",
@@ -51,6 +50,7 @@ const ALL_SLOTS = [
 ];
 
 const toMinutes = (slot) => {
+  if (!slot) return 0;
   const [time, period] = slot.split(" ");
   let [h, m] = time.split(":").map(Number);
   if (period === "PM" && h !== 12) h += 12;
@@ -96,7 +96,6 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
   const slots = useMemo(() => {
     if (!date) return [];
     const valid = getSlotsForDate(date);
-
     const blocked = new Set();
     appointments
       .filter((a) => a.date === date && a.id !== excludeId)
@@ -105,9 +104,7 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
         const duration = Number(a.service_duration || a.duration || 30);
         ALL_SLOTS.forEach((slot) => {
           const slotMin = toMinutes(slot);
-          if (slotMin >= startMin && slotMin < startMin + duration) {
-            blocked.add(slot);
-          }
+          if (slotMin >= startMin && slotMin < startMin + duration) blocked.add(slot);
         });
       });
 
@@ -118,7 +115,6 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
       const startMin = toMinutes(slot);
       const endMin = startMin + serviceDuration;
       const noRoom = endMin > scheduleEndMin;
-
       let conflicts = false;
       let current = startMin;
       while (current < endMin) {
@@ -126,15 +122,10 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
         if (slotAtTime && blocked.has(slotAtTime)) { conflicts = true; break; }
         current += 30;
       }
-
       return {
         slot,
         taken: noRoom || conflicts,
-        reason: noRoom
-          ? "No hay tiempo antes del cierre"
-          : conflicts
-          ? "Hora ocupada"
-          : null,
+        reason: noRoom ? "No hay tiempo antes del cierre" : conflicts ? "Hora ocupada" : null,
       };
     });
   }, [date, appointments, excludeId, serviceDuration]);
@@ -142,9 +133,7 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
   if (!date)          return <p className="text-gray-500 text-sm">Selecciona una fecha primero.</p>;
   if (isClosed(date)) return <p className="text-red-400 text-sm">Cerrado los domingos.</p>;
   if (slots.length === 0) return <p className="text-gray-500 text-sm">No hay horarios disponibles.</p>;
-
-  const allTaken = slots.every((s) => s.taken);
-  if (allTaken) return <p className="text-red-400 text-sm">No hay horas disponibles para este día.</p>;
+  if (slots.every((s) => s.taken)) return <p className="text-red-400 text-sm">No hay horas disponibles para este día.</p>;
 
   return (
     <>
@@ -186,6 +175,51 @@ function SlotPicker({ date, selectedTime, appointments, excludeId, onChange, ser
   );
 }
 
+/* ─── AppointmentRow ─── */
+function AppointmentRow({ a, selected, setSelected, setEditData, setShowCreate, bulkMode, bulkSelected, toggleBulkSelect }) {
+  return (
+    <div>
+      <div className={`bg-white/10 rounded-xl p-4 flex justify-between items-center transition-colors ${
+        bulkMode && bulkSelected.has(a.id) ? "bg-red-500/20 border border-red-500/40" : ""
+      }`}>
+        <div className="flex items-center gap-3">
+          {bulkMode && (
+            <button
+              onClick={() => toggleBulkSelect(a.id)}
+              className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                bulkSelected.has(a.id) ? "bg-red-500 border-red-500" : "border-white/40 hover:border-white"
+              }`}
+            >
+              {bulkSelected.has(a.id) && <span className="text-white text-xs font-bold">✓</span>}
+            </button>
+          )}
+          <div>
+            <p className="font-semibold">{a.client_name} — {a.service_name}</p>
+            <p className="text-sm text-gray-300">
+              {format(new Date(`${a.date}T00:00:00`), "PPP", { locale: es })} · {a.time}
+            </p>
+          </div>
+        </div>
+        {!bulkMode ? (
+          <button
+            onClick={() => {
+              if (selected?.id === a.id) { setSelected(null); }
+              else { setSelected(a); setEditData(a); setShowCreate(false); }
+            }}
+            className="text-sm underline hover:text-gray-300"
+          >
+            {selected?.id === a.id ? "Cerrar" : "Ver detalles"}
+          </button>
+        ) : (
+          <button onClick={() => toggleBulkSelect(a.id)} className="text-sm text-gray-400 hover:text-white">
+            {bulkSelected.has(a.id) ? "Deseleccionar" : "Seleccionar"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AppointmentsTab() {
   const [appointments, setAppointments] = useState([]);
   const [services, setServices]         = useState([]);
@@ -195,13 +229,20 @@ export default function AppointmentsTab() {
   const [filterMode, setFilterMode] = useState("day");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear]   = useState(new Date().getFullYear());
+  const [selectedBarber, setSelectedBarber] = useState("all"); // "all" or barber_id
 
-  const [selected, setSelected] = useState(null);
-  const [editData, setEditData] = useState({});
-
+  const [selected, setSelected]   = useState(null);
+  const [editData, setEditData]   = useState({});
   const [showCreate, setShowCreate] = useState(false);
   const [createData, setCreateData] = useState(EMPTY_CREATE);
   const [saving, setSaving]         = useState(false);
+
+  const [bulkMode, setBulkMode]         = useState(false);
+  const [bulkSelected, setBulkSelected] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Which barber sections are collapsed
+  const [collapsedBarbers, setCollapsedBarbers] = useState(new Set());
 
   /* ── FETCH ── */
   const fetchAll = async () => {
@@ -220,7 +261,7 @@ export default function AppointmentsTab() {
 
   /* ── FILTER ── */
   const filteredAppointments = useMemo(() => {
-    return appointments.filter((a) => {
+    const filtered = appointments.filter((a) => {
       if (!a.date) return false;
       const date = new Date(`${a.date}T00:00:00`);
       if (filterMode === "day")   return isToday(date);
@@ -229,12 +270,58 @@ export default function AppointmentsTab() {
       if (filterMode === "year")  return date.getFullYear() === selectedYear;
       return true;
     });
+    return filtered.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return toMinutes(a.time) - toMinutes(b.time);
+    });
   }, [appointments, filterMode, selectedMonth, selectedYear]);
+
+  /* ── GROUP BY BARBER ── */
+  const groupedByBarber = useMemo(() => {
+    if (selectedBarber !== "all") {
+      return [{ barber_id: selectedBarber, barber_name: barbers.find(b => b.id === selectedBarber)?.name || selectedBarber, appointments: filteredAppointments.filter(a => a.barber_id === selectedBarber) }];
+    }
+    const map = new Map();
+    filteredAppointments.forEach((a) => {
+      const key = a.barber_id || "sin_barbero";
+      if (!map.has(key)) map.set(key, { barber_id: key, barber_name: a.barber_name || "Sin barbero", appointments: [] });
+      map.get(key).appointments.push(a);
+    });
+    return [...map.values()];
+  }, [filteredAppointments, selectedBarber, barbers]);
 
   /* ── METRICS ── */
   const totalAppointments = filteredAppointments.length;
   const totalIncome = filteredAppointments.reduce((acc, a) => acc + (Number(a.service_price) || 0), 0);
   const avgIncome   = totalAppointments > 0 ? totalIncome / totalAppointments : 0;
+
+  /* ── BULK ── */
+  const toggleBulkMode = () => { setBulkMode(!bulkMode); setBulkSelected(new Set()); setSelected(null); };
+  const toggleBulkSelect = (id) => {
+    const next = new Set(bulkSelected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setBulkSelected(next);
+  };
+  const selectAll = () => {
+    if (bulkSelected.size === filteredAppointments.length) setBulkSelected(new Set());
+    else setBulkSelected(new Set(filteredAppointments.map((a) => a.id)));
+  };
+  const handleBulkDelete = async () => {
+    if (bulkSelected.size === 0) return;
+    if (!confirm(`¿Eliminar ${bulkSelected.size} cita(s)?`)) return;
+    setBulkDeleting(true);
+    await Promise.all([...bulkSelected].map((id) => deleteDoc(doc(db, "appointments", id))));
+    setBulkDeleting(false);
+    setBulkMode(false);
+    setBulkSelected(new Set());
+    fetchAll();
+  };
+
+  const toggleCollapseBarber = (barberId) => {
+    const next = new Set(collapsedBarbers);
+    if (next.has(barberId)) next.delete(barberId); else next.add(barberId);
+    setCollapsedBarbers(next);
+  };
 
   /* ── CREATE ── */
   const handleCreate = async (e) => {
@@ -255,7 +342,6 @@ export default function AppointmentsTab() {
     setCreateData(EMPTY_CREATE);
   };
 
-  /* ── DELETE ── */
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar esta cita?")) return;
     await deleteDoc(doc(db, "appointments", id));
@@ -263,7 +349,6 @@ export default function AppointmentsTab() {
     fetchAll();
   };
 
-  /* ── UPDATE ── */
   const handleUpdate = async () => {
     const service = services.find((s) => s.id === editData.service_id);
     await updateDoc(doc(db, "appointments", selected.id), {
@@ -276,6 +361,8 @@ export default function AppointmentsTab() {
 
   if (loading) return <p className="text-white p-4">Cargando…</p>;
 
+  const allSelected = bulkSelected.size === filteredAppointments.length && filteredAppointments.length > 0;
+
   return (
     <div className="p-4 space-y-6 text-white">
 
@@ -286,7 +373,7 @@ export default function AppointmentsTab() {
         <Metric title="Promedio" value={`₡${avgIncome.toLocaleString("es-CR", { maximumFractionDigits: 0 })}`} />
       </div>
 
-      {/* FILTER + CREAR */}
+      {/* FILTERS */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex gap-2 flex-wrap">
@@ -298,39 +385,63 @@ export default function AppointmentsTab() {
             ].map((f) => (
               <button
                 key={f.key}
-                onClick={() => setFilterMode(f.key)}
+                onClick={() => { setFilterMode(f.key); setBulkMode(false); setBulkSelected(new Set()); }}
                 className={`px-4 py-2 rounded-xl transition-colors ${
-                  filterMode === f.key
-                    ? "bg-white text-black font-semibold"
-                    : "text-white border border-white/30 hover:bg-white/10"
+                  filterMode === f.key ? "bg-white text-black font-semibold" : "text-white border border-white/30 hover:bg-white/10"
                 }`}
               >
                 {f.label}
               </button>
             ))}
           </div>
-          <button
-            onClick={() => { setShowCreate(true); setSelected(null); }}
-            className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
-          >
-            <Plus size={16} />
-            Crear cita
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleBulkMode}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-colors ${
+                bulkMode ? "bg-red-600 text-white hover:bg-red-700" : "border border-red-500/50 text-red-400 hover:bg-red-500/10"
+              }`}
+            >
+              <Trash2 size={16} />
+              {bulkMode ? "Cancelar" : "Eliminar citas"}
+            </button>
+            <button
+              onClick={() => { setShowCreate(true); setSelected(null); setBulkMode(false); }}
+              className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+            >
+              <Plus size={16} />
+              Crear cita
+            </button>
+          </div>
         </div>
+
+        {/* BULK BAR */}
+        {bulkMode && (
+          <div className="flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button onClick={selectAll} className="flex items-center gap-2 text-sm text-white hover:text-gray-300">
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${allSelected ? "bg-white border-white" : "border-white/40"}`}>
+                  {allSelected && <span className="text-black text-xs font-bold">✓</span>}
+                </div>
+                {allSelected ? "Deseleccionar todas" : "Seleccionar todas"}
+              </button>
+              <span className="text-gray-400 text-sm">{bulkSelected.size} seleccionada{bulkSelected.size !== 1 ? "s" : ""}</span>
+            </div>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkSelected.size === 0 || bulkDeleting}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {bulkDeleting ? "Eliminando…" : `Eliminar ${bulkSelected.size > 0 ? bulkSelected.size : ""}`}
+            </button>
+          </div>
+        )}
 
         {/* MONTH PICKER */}
         {filterMode === "month" && (
           <div className="flex flex-wrap gap-2">
             {MONTHS.map((m) => (
-              <button
-                key={m.value}
-                onClick={() => setSelectedMonth(m.value)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  selectedMonth === m.value
-                    ? "bg-white text-black font-semibold"
-                    : "text-white border border-white/20 hover:bg-white/10"
-                }`}
-              >
+              <button key={m.value} onClick={() => setSelectedMonth(m.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedMonth === m.value ? "bg-white text-black font-semibold" : "text-white border border-white/20 hover:bg-white/10"}`}>
                 {m.label}
               </button>
             ))}
@@ -341,167 +452,117 @@ export default function AppointmentsTab() {
         {filterMode === "year" && (
           <div className="flex flex-wrap gap-2">
             {YEARS.map((y) => (
-              <button
-                key={y}
-                onClick={() => setSelectedYear(y)}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                  selectedYear === y
-                    ? "bg-white text-black font-semibold"
-                    : "text-white border border-white/20 hover:bg-white/10"
-                }`}
-              >
+              <button key={y} onClick={() => setSelectedYear(y)}
+                className={`px-4 py-2 rounded-lg text-sm transition-colors ${selectedYear === y ? "bg-white text-black font-semibold" : "text-white border border-white/20 hover:bg-white/10"}`}>
                 {y}
               </button>
             ))}
           </div>
         )}
+
+        {/* BARBER FILTER */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedBarber("all")}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedBarber === "all" ? "bg-white text-black font-semibold" : "text-white border border-white/20 hover:bg-white/10"}`}
+          >
+            Todos los barberos
+          </button>
+          {barbers.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setSelectedBarber(b.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedBarber === b.id ? "bg-white text-black font-semibold" : "text-white border border-white/20 hover:bg-white/10"}`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ═══ MODAL CREAR CITA ═══ */}
+      {/* ═══ MODAL CREAR ═══ */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <h3 className="text-lg font-bold">Nueva Cita</h3>
-
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400">Nombre del cliente</label>
-                  <input
-                    type="text"
-                    required
-                    value={createData.client_name}
+                  <input type="text" required value={createData.client_name}
                     onChange={(e) => setCreateData({ ...createData, client_name: e.target.value })}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
-                  />
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400">Correo</label>
-                  <input
-                    type="email"
-                    value={createData.client_email}
+                  <input type="email" value={createData.client_email}
                     onChange={(e) => setCreateData({ ...createData, client_email: e.target.value })}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
-                  />
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30" />
                 </div>
               </div>
-
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400">Telefono</label>
-                <input
-                  type="tel"
-                  value={createData.client_phone}
+                <input type="tel" value={createData.client_phone}
                   onChange={(e) => setCreateData({ ...createData, client_phone: e.target.value })}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
-                />
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30" />
               </div>
-
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400">Fecha</label>
-                <input
-                  type="date"
-                  required
-                  min={todayStr()}
-                  value={createData.date}
+                <input type="date" required min={todayStr()} value={createData.date}
                   onChange={(e) => {
                     const newDate = e.target.value;
-                    if (isClosed(newDate)) {
-                      alert("El local está cerrado los domingos. Por favor elige otro día.");
-                      setCreateData({ ...createData, date: "", time: "" });
-                    } else {
-                      setCreateData({ ...createData, date: newDate, time: "" });
-                    }
+                    if (isClosed(newDate)) { alert("El local está cerrado los domingos."); setCreateData({ ...createData, date: "", time: "" }); }
+                    else setCreateData({ ...createData, date: newDate, time: "" });
                   }}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
-                />
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30" />
                 {createData.date && !isClosed(createData.date) && (
-                  <p className="text-gray-500 text-xs">
-                    Horario:{" "}
-                    {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.start} –{" "}
-                    {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.end}
-                  </p>
+                  <p className="text-gray-500 text-xs">Horario: {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.end}</p>
                 )}
               </div>
-
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400">Servicio</label>
-                <select
-                  required
-                  value={createData.service_id}
+                <select required value={createData.service_id}
                   onChange={(e) => {
                     const service = services.find((s) => s.id === e.target.value);
                     if (!service) return;
-                    setCreateData({
-                      ...createData,
-                      service_id: service.id,
-                      service_name: service.name,
-                      service_price: service.price,
-                      time: "",
-                    });
+                    setCreateData({ ...createData, service_id: service.id, service_name: service.name, service_price: service.price, time: "" });
                   }}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none"
-                >
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none">
                   <option value="" disabled>Seleccionar servicio</option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id} className="text-black">{s.name}</option>
-                  ))}
+                  {services.map((s) => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
                 </select>
               </div>
-
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400">Barbero</label>
-                <select
-                  required
-                  value={createData.barber_id}
+                <select required value={createData.barber_id}
                   onChange={(e) => {
                     const barber = barbers.find((b) => b.id === e.target.value);
                     if (!barber) return;
                     setCreateData({ ...createData, barber_id: barber.id, barber_name: barber.name });
                   }}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none"
-                >
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none">
                   <option value="" disabled>Seleccionar barbero</option>
-                  {barbers.map((b) => (
-                    <option key={b.id} value={b.id} className="text-black">{b.name}</option>
-                  ))}
+                  {barbers.map((b) => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
                 </select>
               </div>
-
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-400">Precio</label>
                 <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white">
                   {createData.service_price ? `₡${Number(createData.service_price).toLocaleString("es-CR")}` : "—"}
                 </div>
               </div>
-
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-gray-400">
-                  Hora — seleccionada:{" "}
-                  <span className="text-white font-semibold">{createData.time || "ninguna"}</span>
-                </label>
-                <SlotPicker
-                  date={createData.date}
-                  selectedTime={createData.time}
-                  appointments={appointments}
-                  excludeId={null}
+                <label className="text-xs text-gray-400">Hora — seleccionada: <span className="text-white font-semibold">{createData.time || "ninguna"}</span></label>
+                <SlotPicker date={createData.date} selectedTime={createData.time} appointments={appointments} excludeId={null}
                   onChange={(slot) => setCreateData({ ...createData, time: slot })}
-                  serviceDuration={Number(services.find((s) => s.id === createData.service_id)?.duration || 30)}
-                />
+                  serviceDuration={Number(services.find((s) => s.id === createData.service_id)?.duration || 30)} />
               </div>
-
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowCreate(false); setCreateData(EMPTY_CREATE); }}
-                  className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
+                <button type="button" onClick={() => { setShowCreate(false); setCreateData(EMPTY_CREATE); }}
+                  className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors">Cancelar</button>
+                <button type="submit"
                   disabled={saving || !createData.client_name || !createData.date || !createData.time || !createData.barber_id || !createData.service_id}
-                  className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   {saving ? "Guardando…" : "Crear cita"}
                 </button>
               </div>
@@ -510,182 +571,150 @@ export default function AppointmentsTab() {
         </div>
       )}
 
-      {/* LIST */}
-      <div className="space-y-2">
+      {/* LIST GROUPED BY BARBER */}
+      <div className="space-y-4">
         {filteredAppointments.length === 0 && (
           <p className="text-gray-400">No hay citas para este período.</p>
         )}
-        {filteredAppointments.map((a) => (
-          <div key={a.id}>
-            <div className="bg-white/10 rounded-xl p-4 flex justify-between items-center">
-              <div>
-                <p className="font-semibold">{a.client_name} — {a.service_name}</p>
-                <p className="text-sm text-gray-300">
-                  {format(new Date(`${a.date}T00:00:00`), "PPP", { locale: es })} · {a.time}
-                </p>
+
+        {groupedByBarber.map(({ barber_id, barber_name, appointments: barberAppts }) => (
+          <div key={barber_id} className="border border-white/10 rounded-2xl overflow-hidden">
+
+            {/* BARBER HEADER */}
+            <button
+              onClick={() => toggleCollapseBarber(barber_id)}
+              className="w-full flex items-center justify-between px-5 py-4 bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+                  {barber_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold">{barber_name}</p>
+                  <p className="text-xs text-gray-400">{barberAppts.length} cita{barberAppts.length !== 1 ? "s" : ""}</p>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  if (selected?.id === a.id) {
-                    setSelected(null);
-                  } else {
-                    setSelected(a);
-                    setEditData(a);
-                    setShowCreate(false);
-                  }
-                }}
-                className="text-sm underline hover:text-gray-300"
-              >
-                {selected?.id === a.id ? "Cerrar" : "Ver detalles"}
-              </button>
-            </div>
+              {collapsedBarbers.has(barber_id) ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+            </button>
 
-            {/* PANEL INLINE */}
-            {selected?.id === a.id && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 mt-2">
-                <h2 className="text-lg font-bold">Detalles de la cita</h2>
+            {/* BARBER APPOINTMENTS */}
+            {!collapsedBarbers.has(barber_id) && (
+              <div className="p-3 space-y-2">
+                {barberAppts.map((a) => (
+                  <div key={a.id}>
+                    <div className={`bg-white/10 rounded-xl p-4 flex justify-between items-center transition-colors ${
+                      bulkMode && bulkSelected.has(a.id) ? "bg-red-500/20 border border-red-500/40" : ""
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        {bulkMode && (
+                          <button onClick={() => toggleBulkSelect(a.id)}
+                            className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${bulkSelected.has(a.id) ? "bg-red-500 border-red-500" : "border-white/40 hover:border-white"}`}>
+                            {bulkSelected.has(a.id) && <span className="text-white text-xs font-bold">✓</span>}
+                          </button>
+                        )}
+                        <div>
+                          <p className="font-semibold">{a.client_name} — {a.service_name}</p>
+                          <p className="text-sm text-gray-300">
+                            {format(new Date(`${a.date}T00:00:00`), "PPP", { locale: es })} · {a.time}
+                          </p>
+                        </div>
+                      </div>
+                      {!bulkMode ? (
+                        <button
+                          onClick={() => {
+                            if (selected?.id === a.id) setSelected(null);
+                            else { setSelected(a); setEditData(a); setShowCreate(false); }
+                          }}
+                          className="text-sm underline hover:text-gray-300"
+                        >
+                          {selected?.id === a.id ? "Cerrar" : "Ver detalles"}
+                        </button>
+                      ) : (
+                        <button onClick={() => toggleBulkSelect(a.id)} className="text-sm text-gray-400 hover:text-white">
+                          {bulkSelected.has(a.id) ? "Deseleccionar" : "Seleccionar"}
+                        </button>
+                      )}
+                    </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-gray-400">Nombre</label>
-                    <input
-                      type="text"
-                      value={editData.client_name || ""}
-                      onChange={(e) => setEditData({ ...editData, client_name: e.target.value })}
-                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs text-gray-400">Correo</label>
-                    <input
-                      type="email"
-                      value={editData.client_email || editData.email || ""}
-                      onChange={(e) => setEditData({ ...editData, client_email: e.target.value, email: e.target.value })}
-                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
-                    <label className="text-xs text-gray-400">Telefono</label>
-                    <input
-                      type="tel"
-                      value={editData.client_phone || ""}
-                      onChange={(e) => setEditData({ ...editData, client_phone: e.target.value })}
-                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
-                    <label className="text-xs text-gray-400">Fecha</label>
-                    <input
-                      type="date"
-                      min={todayStr()}
-                      value={editData.date || ""}
-                      onChange={(e) => {
-                        const newDate = e.target.value;
-                        if (isClosed(newDate)) {
-                          alert("El local está cerrado los domingos. Por favor elige otro día.");
-                          setEditData({ ...editData, date: "", time: "" });
-                        } else {
-                          setEditData({ ...editData, date: newDate, time: "" });
-                        }
-                      }}
-                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40"
-                    />
-                    {editData.date && !isClosed(editData.date) && (
-                      <p className="text-gray-500 text-xs">
-                        Horario:{" "}
-                        {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.start} –{" "}
-                        {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.end}
-                      </p>
+                    {/* PANEL INLINE */}
+                    {!bulkMode && selected?.id === a.id && (
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 mt-2">
+                        <h2 className="text-lg font-bold">Detalles de la cita</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-400">Nombre</label>
+                            <input type="text" value={editData.client_name || ""}
+                              onChange={(e) => setEditData({ ...editData, client_name: e.target.value })}
+                              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-400">Correo</label>
+                            <input type="email" value={editData.client_email || editData.email || ""}
+                              onChange={(e) => setEditData({ ...editData, client_email: e.target.value, email: e.target.value })}
+                              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
+                          </div>
+                          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
+                            <label className="text-xs text-gray-400">Telefono</label>
+                            <input type="tel" value={editData.client_phone || ""}
+                              onChange={(e) => setEditData({ ...editData, client_phone: e.target.value })}
+                              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
+                          </div>
+                          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
+                            <label className="text-xs text-gray-400">Fecha</label>
+                            <input type="date" min={todayStr()} value={editData.date || ""}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                if (isClosed(newDate)) { alert("El local está cerrado los domingos."); setEditData({ ...editData, date: "", time: "" }); }
+                                else setEditData({ ...editData, date: newDate, time: "" });
+                              }}
+                              className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
+                            {editData.date && !isClosed(editData.date) && (
+                              <p className="text-gray-500 text-xs">Horario: {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.end}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-gray-400">Servicio</label>
+                          <select value={editData.service_id || ""}
+                            onChange={(e) => {
+                              const service = services.find((s) => s.id === e.target.value);
+                              if (!service) return;
+                              setEditData({ ...editData, service_id: service.id, service_name: service.name, service_price: service.price, service_duration: service.duration, time: "" });
+                            }}
+                            className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none">
+                            <option value="" disabled>Seleccionar servicio</option>
+                            {services.map((s) => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-gray-400">Barbero</label>
+                          <select value={editData.barber_id || ""}
+                            onChange={(e) => {
+                              const barber = barbers.find((b) => b.id === e.target.value);
+                              if (!barber) return;
+                              setEditData({ ...editData, barber_id: barber.id, barber_name: barber.name });
+                            }}
+                            className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none">
+                            <option value="" disabled>Seleccionar barbero</option>
+                            {barbers.map((b) => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
+                          </select>
+                        </div>
+                        <p className="text-sm text-gray-300">Precio: <span className="font-semibold text-white">{editData.service_price ? `₡${Number(editData.service_price).toLocaleString("es-CR")}` : "—"}</span></p>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs text-gray-400">Hora — seleccionada: <span className="text-white font-semibold">{editData.time || "ninguna"}</span></label>
+                          <SlotPicker date={editData.date} selectedTime={editData.time} appointments={appointments} excludeId={selected.id}
+                            onChange={(slot) => setEditData({ ...editData, time: slot })}
+                            serviceDuration={Number(services.find((s) => s.id === editData.service_id)?.duration || editData.service_duration || 30)} />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                          <button onClick={handleUpdate} className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-100">Actualizar</button>
+                          <button onClick={() => handleDelete(selected.id)} className="bg-red-600 px-4 py-2 rounded-lg hover:bg-red-700">Eliminar</button>
+                          <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-white ml-auto">Cerrar</button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Servicio</label>
-                  <select
-                    value={editData.service_id || ""}
-                    onChange={(e) => {
-                      const service = services.find((s) => s.id === e.target.value);
-                      if (!service) return;
-                      setEditData({
-                        ...editData,
-                        service_id: service.id,
-                        service_name: service.name,
-                        service_price: service.price,
-                        service_duration: service.duration,
-                        time: "",
-                      });
-                    }}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none"
-                  >
-                    <option value="" disabled>Seleccionar servicio</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id} className="text-black">{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-400">Barbero</label>
-                  <select
-                    value={editData.barber_id || ""}
-                    onChange={(e) => {
-                      const barber = barbers.find((b) => b.id === e.target.value);
-                      if (!barber) return;
-                      setEditData({ ...editData, barber_id: barber.id, barber_name: barber.name });
-                    }}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none"
-                  >
-                    <option value="" disabled>Seleccionar barbero</option>
-                    {barbers.map((b) => (
-                      <option key={b.id} value={b.id} className="text-black">{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <p className="text-sm text-gray-300">
-                  Precio: <span className="font-semibold text-white">
-                    {editData.service_price ? `₡${Number(editData.service_price).toLocaleString("es-CR")}` : "—"}
-                  </span>
-                </p>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs text-gray-400">
-                    Hora — seleccionada:{" "}
-                    <span className="text-white font-semibold">{editData.time || "ninguna"}</span>
-                  </label>
-                  <SlotPicker
-                    date={editData.date}
-                    selectedTime={editData.time}
-                    appointments={appointments}
-                    excludeId={selected.id}
-                    onChange={(slot) => setEditData({ ...editData, time: slot })}
-                    serviceDuration={Number(services.find((s) => s.id === editData.service_id)?.duration || editData.service_duration || 30)}
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleUpdate}
-                    className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-100"
-                  >
-                    Actualizar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(selected.id)}
-                    className="bg-red-600 px-4 py-2 rounded-lg hover:bg-red-700"
-                  >
-                    Eliminar
-                  </button>
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="text-gray-400 hover:text-white ml-auto"
-                  >
-                    Cerrar
-                  </button>
-                </div>
+                ))}
               </div>
             )}
           </div>
