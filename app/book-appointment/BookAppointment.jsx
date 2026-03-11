@@ -10,6 +10,11 @@ import db from "@/lib/firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import { es } from "date-fns/locale";
+import emailjs from "@emailjs/browser";
+
+const EMAILJS_SERVICE_ID  = "service_9pul3kl";
+const EMAILJS_TEMPLATE_ID = "template_hhi6zxr";
+const EMAILJS_PUBLIC_KEY  = "mMzuLzUZeh4Jl9Tmb";
 
 /* ── HORARIOS ── */
 const SCHEDULE = {
@@ -59,16 +64,13 @@ const getSlotsForDate = (date) => {
 
 const toDateStr = (date) => format(date, "yyyy-MM-dd");
 
-/* ── Calcula qué slots están bloqueados dado las citas existentes ── */
 const getBlockedSlots = (appointments, dateStr, serviceDurationMin) => {
   const blocked = new Set();
-
   appointments
     .filter((a) => a.date === dateStr)
     .forEach((a) => {
       const startMin = toMinutes(a.time);
       const duration = Number(a.service_duration || a.duration || 30);
-      // Bloquea todos los slots que esta cita ocupa
       ALL_SLOTS.forEach((slot) => {
         const slotMin = toMinutes(slot);
         if (slotMin >= startMin && slotMin < startMin + duration) {
@@ -76,26 +78,19 @@ const getBlockedSlots = (appointments, dateStr, serviceDurationMin) => {
         }
       });
     });
-
   return blocked;
 };
 
-/* ── Verifica si un slot tiene espacio suficiente para la duración del servicio ── */
 const slotHasRoom = (slot, blockedSlots, scheduleEndMin, serviceDurationMin) => {
   const startMin = toMinutes(slot);
   const endMin   = startMin + serviceDurationMin;
-
-  // No cabe antes del cierre
   if (endMin > scheduleEndMin) return false;
-
-  // Algún slot intermedio está bloqueado
   for (const s of ALL_SLOTS) {
     const m = toMinutes(s);
     if (m >= startMin && m < endMin) {
       if (blockedSlots.has(s)) return false;
     }
   }
-
   return true;
 };
 
@@ -129,7 +124,11 @@ export default function BookAppointment() {
 
       const barbersData = barbersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setBarbers(barbersData.filter((b) => b.visible !== false));
-      setServices(servicesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      setServices(
+        servicesSnap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((s) => s.visible !== false)
+      );
       setAppointments(appointmentsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
       if (preselectedBarberId) {
@@ -140,28 +139,23 @@ export default function BookAppointment() {
     fetchData();
   }, [preselectedBarberId]);
 
-  /* ── SLOTS disponibles para la fecha y servicio seleccionado ── */
+  /* ── SLOTS ── */
   const availableSlots = (() => {
     if (!selectedDate || !selectedService) return [];
-
     const slots = getSlotsForDate(selectedDate);
     const dateStr = toDateStr(selectedDate);
     const serviceDuration = Number(selectedService.duration || 30);
     const day = selectedDate.getDay();
     const scheduleEndMin = toMinutes(SCHEDULE[day]?.end || "8:00 PM");
-
     const blockedSlots = getBlockedSlots(appointments, dateStr, serviceDuration);
-
     return slots.map((slot) => ({
       slot,
       taken: !slotHasRoom(slot, blockedSlots, scheduleEndMin, serviceDuration),
     }));
   })();
 
-  const allSlotsTaken =
-    availableSlots.length > 0 && availableSlots.every((s) => s.taken);
+  const allSlotsTaken = availableSlots.length > 0 && availableSlots.every((s) => s.taken);
 
-  /* ── tileDisabled ── */
   const tileDisabled = ({ date }) => {
     if (date.getDay() === 0) return true;
     const dateStr = format(date, "yyyy-MM-dd");
@@ -172,7 +166,6 @@ export default function BookAppointment() {
     return slots.length > 0 && slots.every((s) => !slotHasRoom(s, blockedSlots, scheduleEndMin, serviceDuration));
   };
 
-  /* ── canProceed ── */
   const canProceed = () => {
     switch (step) {
       case 1: return !!selectedBarber;
@@ -187,6 +180,7 @@ export default function BookAppointment() {
   /* ── SUBMIT ── */
   const handleSubmit = async () => {
     setIsSubmitting(true);
+
     await addDoc(collection(db, "appointments"), {
       barber_id: selectedBarber.id,
       barber_name: selectedBarber.name,
@@ -202,6 +196,25 @@ export default function BookAppointment() {
       status: "pendiente",
       created_at: new Date(),
     });
+
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          client_name:  clientName,
+          client_email: clientEmail,
+          barber_name:  selectedBarber.name,
+          service_name: selectedService.name,
+          date:         toDateStr(selectedDate),
+          time:         selectedTime,
+        },
+        EMAILJS_PUBLIC_KEY
+      );
+    } catch (err) {
+      console.error("Error enviando correo:", err);
+    }
+
     setIsSubmitting(false);
     setIsComplete(true);
   };
@@ -210,26 +223,30 @@ export default function BookAppointment() {
   if (isComplete) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-6">
-        <div className="text-center max-w-md">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-black text-white mb-4">Cita confirmada!</h1>
-          <p className="text-gray-400 mb-6">
-            Te esperamos el{" "}
-            <span className="text-white font-semibold">
-              {format(selectedDate, "PPP", { locale: es })}
-            </span>{" "}
-            a las{" "}
-            <span className="text-white font-semibold">{selectedTime}</span>
-          </p>
-          <button
-            type="button"
-            onClick={() => (window.location.href = "/")}
-            className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
-          >
-            Volver al inicio
-          </button>
-        </div>
-      </div>
+  <div className="text-center max-w-md">
+    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+    <h1 className="text-3xl font-black text-white mb-4">¡Cita confirmada!</h1>
+    <p className="text-gray-400 mb-2">
+      Te esperamos el{" "}
+      <span className="text-white font-semibold">
+        {format(selectedDate, "PPP", { locale: es })}
+      </span>{" "}
+      a las{" "}
+      <span className="text-white font-semibold">{selectedTime}</span>
+    </p>
+    <p className="text-gray-500 text-sm mb-6">
+      Te enviamos un correo de confirmación.{" "}
+      <span className="text-gray-400">Si no lo ves, revisa tu carpeta de spam.</span>
+    </p>
+    <button
+      type="button"
+      onClick={() => (window.location.href = "/")}
+      className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
+    >
+      Volver al inicio
+    </button>
+  </div>
+</div>
     );
   }
 
@@ -249,13 +266,10 @@ export default function BookAppointment() {
             exit={{ opacity: 0, x: -30 }}
             className="bg-white/5 rounded-3xl border border-white/10 p-8"
           >
-
             {/* STEP 1 — barbero */}
             {step === 1 && (
               <>
-                <h2 className="text-2xl text-white font-bold mb-6">
-                  Selecciona tu barbero
-                </h2>
+                <h2 className="text-2xl text-white font-bold mb-6">Selecciona tu barbero</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {barbers.map((barber) => (
                     <button
@@ -278,9 +292,7 @@ export default function BookAppointment() {
             {/* STEP 2 — servicio */}
             {step === 2 && (
               <>
-                <h2 className="text-2xl text-white font-bold mb-6">
-                  Selecciona el servicio
-                </h2>
+                <h2 className="text-2xl text-white font-bold mb-6">Selecciona el servicio</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {services.map((service) => (
                     <button
@@ -310,33 +322,24 @@ export default function BookAppointment() {
             {/* STEP 3 — fecha */}
             {step === 3 && (
               <>
-                <h2 className="text-2xl text-white font-bold mb-2">
-                  Selecciona la fecha
-                </h2>
+                <h2 className="text-2xl text-white font-bold mb-2">Selecciona la fecha</h2>
                 <p className="text-gray-500 text-sm mb-6">
                   Lun–Vie: 9:00 AM – 8:00 PM &nbsp;|&nbsp; Sáb: 9:00 AM – 6:00 PM &nbsp;|&nbsp; Dom: Cerrado
                 </p>
                 <div className="flex justify-center">
                   <DarkCalendar
                     value={selectedDate}
-                    onChange={(date) => {
-                      setSelectedDate(date);
-                      setSelectedTime(null);
-                    }}
+                    onChange={(date) => { setSelectedDate(date); setSelectedTime(null); }}
                     minDate={new Date()}
                     maxDate={new Date(new Date().setDate(new Date().getDate() + 30))}
                     tileDisabled={tileDisabled}
                   />
                 </div>
                 {selectedDate && selectedDate.getDay() === 0 && (
-                  <p className="text-red-400 text-sm text-center mt-4">
-                    Los domingos estamos cerrados. Por favor elige otro dia.
-                  </p>
+                  <p className="text-red-400 text-sm text-center mt-4">Los domingos estamos cerrados. Por favor elige otro dia.</p>
                 )}
                 {selectedDate && selectedDate.getDay() !== 0 && allSlotsTaken && (
-                  <p className="text-red-400 text-sm text-center mt-4">
-                    No hay horas disponibles para este dia. Por favor elige otro.
-                  </p>
+                  <p className="text-red-400 text-sm text-center mt-4">No hay horas disponibles para este dia. Por favor elige otro.</p>
                 )}
                 {selectedDate && selectedDate.getDay() !== 0 && !allSlotsTaken && (
                   <p className="text-gray-500 text-sm text-center mt-4">
@@ -349,11 +352,10 @@ export default function BookAppointment() {
             {/* STEP 4 — hora */}
             {step === 4 && (
               <>
-                <h2 className="text-2xl text-white font-bold mb-2">
-                  Selecciona la hora
-                </h2>
+                <h2 className="text-2xl text-white font-bold mb-2">Selecciona la hora</h2>
                 <p className="text-gray-500 text-sm mb-6">
-                  {format(selectedDate, "PPP", { locale: es })} — {selectedService?.name} ({selectedService?.duration >= 60
+                  {format(selectedDate, "PPP", { locale: es })} — {selectedService?.name} (
+                  {selectedService?.duration >= 60
                     ? `${selectedService.duration / 60}h`
                     : `${selectedService?.duration}min`})
                 </p>
@@ -415,7 +417,6 @@ export default function BookAppointment() {
                 </div>
               </>
             )}
-
           </motion.div>
         </AnimatePresence>
 

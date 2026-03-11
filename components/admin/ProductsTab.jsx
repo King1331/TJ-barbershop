@@ -132,7 +132,7 @@ export default function ProductsTab() {
                       {product.name}
                     </h3>
                     <p className="text-white font-bold text-xl mt-1">
-                      {Number(product.price).toLocaleString("es-CR")}₡
+                     ₡ {Number(product.price).toLocaleString("es-CR")}
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
                       {categoryLabels[product.category] || product.category}
