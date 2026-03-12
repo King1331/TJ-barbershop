@@ -239,22 +239,34 @@ export default function ProductsTab() {
               </div>
 
               {/* EN STOCK */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, in_stock: !formData.in_stock })}
-                  className={`w-11 h-6 rounded-full transition-colors relative ₡{
-                    formData.in_stock ? "bg-white" : "bg-white/20"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 rounded-full transition-all ₡{
-                      formData.in_stock ? "bg-black left-6" : "bg-white left-1"
-                    }`}
-                  />
-                </button>
-                <label className="text-gray-300 text-sm">En stock</label>
-              </div>
+              {/* EN STOCK */}
+<div className="flex flex-col gap-1">
+  <label className="text-xs text-gray-400">Disponibilidad</label>
+  <div className="flex gap-2">
+    <button
+      type="button"
+      onClick={() => setFormData({ ...formData, in_stock: true })}
+      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+        formData.in_stock
+          ? "bg-green-500/20 border-green-500/50 text-green-400"
+          : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
+      }`}
+    >
+      ✓ En stock
+    </button>
+    <button
+      type="button"
+      onClick={() => setFormData({ ...formData, in_stock: false })}
+      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+        !formData.in_stock
+          ? "bg-red-500/20 border-red-500/50 text-red-400"
+          : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
+      }`}
+    >
+      ✗ Agotado
+    </button>
+  </div>
+</div>
 
               {/* ACTIONS */}
               <div className="flex gap-3 pt-2">

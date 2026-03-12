@@ -79,8 +79,7 @@ export default function ProductDetail() {
   }
 
   const whatsappMessage = `Hola! Me interesa cotizar el producto: ${product.name} - ${Number(product.price).toLocaleString("es-CR")}₡`;
-  const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(whatsappMessage)}`;
-
+const whatsappUrl = `https://wa.me/50685654169?text=${encodeURIComponent(whatsappMessage)}`;
   return (
     <div className="min-h-screen bg-[#0A0A0A] pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-6">

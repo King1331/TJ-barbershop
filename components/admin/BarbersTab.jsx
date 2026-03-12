@@ -6,6 +6,29 @@ import {
 } from "firebase/firestore";
 import db from "@/lib/firebase/firestore";
 import { Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import emailjs from "@emailjs/browser";
+
+const EMAILJS_SERVICE_ID         = "service_9pul3kl";
+const EMAILJS_TEMPLATE_CANCELLED = "template_2y4ok6z";
+const EMAILJS_PUBLIC_KEY         = "mMzuLzUZeh4Jl9Tmb";
+
+const sendCancellationEmail = async (appointment) => {
+  if (!appointment?.client_email) return;
+  try {
+    await emailjs.send(
+      EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_CANCELLED,
+      {
+        client_name:  appointment.client_name,
+        client_email: appointment.client_email,
+        barber_name:  appointment.barber_name,
+        service_name: appointment.service_name,
+        date:         appointment.date,
+        time:         appointment.time,
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+  } catch (err) { console.error("Error enviando correo de cancelación:", err); }
+};
 
 const EMPTY_FORM = {
   name: "", role: "", experience: "", quote: "", image_url: "",
@@ -112,6 +135,7 @@ export default function BarbersTab() {
         danger: true,
         onConfirm: async () => {
           await Promise.all(futureLinked.map((a) => deleteDoc(doc(db, "appointments", a.id))));
+          await Promise.all(futureLinked.map((a) => sendCancellationEmail(a)));
           await deleteDoc(doc(db, "barber", barber.id));
           fetchBarbers();
           closeConfirm();
