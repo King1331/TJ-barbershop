@@ -36,7 +36,9 @@ export default function ProductsTab() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   /* ---------------- HELPERS ---------------- */
   const handleClose = () => {
@@ -92,7 +94,6 @@ export default function ProductsTab() {
 
   return (
     <div className="p-4 space-y-6 text-white">
-
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Productos</h2>
@@ -109,7 +110,9 @@ export default function ProductsTab() {
       {products.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-2xl py-12 text-center">
           <p className="text-gray-400">No hay productos registrados</p>
-          <p className="text-gray-500 text-sm mt-2">Agrega tu primer producto para comenzar</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Agrega tu primer producto para comenzar
+          </p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -132,7 +135,7 @@ export default function ProductsTab() {
                       {product.name}
                     </h3>
                     <p className="text-white font-bold text-xl mt-1">
-                     ₡ {Number(product.price).toLocaleString("es-CR")}
+                      ₡ {Number(product.price).toLocaleString("es-CR")}
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
                       {categoryLabels[product.category] || product.category}
@@ -153,7 +156,9 @@ export default function ProductsTab() {
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm mt-3 flex-1">{product.description}</p>
+                <p className="text-gray-400 text-sm mt-3 flex-1">
+                  {product.description}
+                </p>
                 <div className="mt-3">
                   {product.in_stock ? (
                     <span className="text-green-400 text-xs">✓ En stock</span>
@@ -183,7 +188,9 @@ export default function ProductsTab() {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
                 />
               </div>
@@ -194,7 +201,9 @@ export default function ProductsTab() {
                 <textarea
                   rows={3}
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30 resize-none"
                 />
               </div>
@@ -208,7 +217,17 @@ export default function ProductsTab() {
                     step="0.01"
                     required
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (
+                        val === "" ||
+                        (Number(val) <= 9999999 && Number(val) >= 0)
+                      ) {
+                        setFormData({ ...formData, price: val });
+                      }
+                    }}
+                    max={9999999}
+                    min={0}
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-white/30"
                   />
                 </div>
@@ -216,12 +235,20 @@ export default function ProductsTab() {
                   <label className="text-xs text-gray-400">Categoría</label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none"
                   >
-                    <option value="productos_cabello" className="text-black">Productos para Cabello</option>
-                    <option value="productos_piel" className="text-black">Productos para Piel</option>
-                    <option value="camisas_deportivas" className="text-black">Camisas Deportivas</option>
+                    <option value="productos_cabello" className="text-black">
+                      Productos para Cabello
+                    </option>
+                    <option value="productos_piel" className="text-black">
+                      Productos para Piel
+                    </option>
+                    <option value="camisas_deportivas" className="text-black">
+                      Camisas Deportivas
+                    </option>
                   </select>
                 </div>
               </div>
@@ -233,40 +260,44 @@ export default function ProductsTab() {
                   type="text"
                   placeholder="https://..."
                   value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, image_url: e.target.value })
+                  }
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-white/30"
                 />
               </div>
 
               {/* EN STOCK */}
               {/* EN STOCK */}
-<div className="flex flex-col gap-1">
-  <label className="text-xs text-gray-400">Disponibilidad</label>
-  <div className="flex gap-2">
-    <button
-      type="button"
-      onClick={() => setFormData({ ...formData, in_stock: true })}
-      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
-        formData.in_stock
-          ? "bg-green-500/20 border-green-500/50 text-green-400"
-          : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
-      }`}
-    >
-      ✓ En stock
-    </button>
-    <button
-      type="button"
-      onClick={() => setFormData({ ...formData, in_stock: false })}
-      className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
-        !formData.in_stock
-          ? "bg-red-500/20 border-red-500/50 text-red-400"
-          : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
-      }`}
-    >
-      ✗ Agotado
-    </button>
-  </div>
-</div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400">Disponibilidad</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, in_stock: true })}
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                      formData.in_stock
+                        ? "bg-green-500/20 border-green-500/50 text-green-400"
+                        : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
+                    }`}
+                  >
+                    ✓ En stock
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, in_stock: false })
+                    }
+                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                      !formData.in_stock
+                        ? "bg-red-500/20 border-red-500/50 text-red-400"
+                        : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10"
+                    }`}
+                  >
+                    ✗ Agotado
+                  </button>
+                </div>
+              </div>
 
               {/* ACTIONS */}
               <div className="flex gap-3 pt-2">
@@ -279,10 +310,19 @@ export default function ProductsTab() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  disabled={
+                    saving ||
+                    !formData.name ||
+                    !formData.price ||
+                    !formData.image_url
+                  }
+                  className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Guardando…" : editingProduct ? "Actualizar" : "Crear"}
+                  {saving
+                    ? "Guardando…"
+                    : editingProduct
+                      ? "Actualizar"
+                      : "Crear"}
                 </button>
               </div>
             </form>

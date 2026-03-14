@@ -237,7 +237,6 @@ export default function ServicesTab() {
 
   return (
     <div className="space-y-6">
-
       <ConfirmModal
         open={confirmModal.open}
         title={confirmModal.title}
@@ -273,7 +272,9 @@ export default function ServicesTab() {
                 <Input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -283,7 +284,9 @@ export default function ServicesTab() {
                 <Textarea
                   rows={3}
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -295,7 +298,17 @@ export default function ServicesTab() {
                     type="number"
                     required
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (
+                        val === "" ||
+                        (Number(val) <= 9999999 && Number(val) >= 0)
+                      ) {
+                        setFormData({ ...formData, price: val });
+                      }
+                    }}
+                    max={9999999}
+                    min={0}
                     className="bg-white/5 border-white/10"
                   />
                 </div>
@@ -304,12 +317,22 @@ export default function ServicesTab() {
                   <select
                     required
                     value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, duration: e.target.value })
+                    }
                     className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-white focus:outline-none mt-1"
                   >
-                    <option value="" disabled className="text-black">Seleccionar duración</option>
+                    <option value="" disabled className="text-black">
+                      Seleccionar duración
+                    </option>
                     {DURATION_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="text-black">{opt.label}</option>
+                      <option
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-black"
+                      >
+                        {opt.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -319,7 +342,9 @@ export default function ServicesTab() {
                 <Label>URL Imagen</Label>
                 <Input
                   value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, image_url: e.target.value })
+                  }
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -327,7 +352,9 @@ export default function ServicesTab() {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.visible}
-                  onCheckedChange={(v) => setFormData({ ...formData, visible: v })}
+                  onCheckedChange={(v) =>
+                    setFormData({ ...formData, visible: v })
+                  }
                 />
                 <Label>Visible en el frontend</Label>
               </div>
@@ -367,14 +394,17 @@ export default function ServicesTab() {
                 </div>
 
                 <div className="flex gap-2">
-
                   {/* OJO */}
                   <div className="relative group">
                     <button
                       onClick={() => toggleVisibility(service)}
                       className="text-gray-400 hover:text-white transition-colors"
                     >
-                      {service.visible !== false ? <Eye size={18} /> : <EyeOff size={18} />}
+                      {service.visible !== false ? (
+                        <Eye size={18} />
+                      ) : (
+                        <EyeOff size={18} />
+                      )}
                     </button>
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                       {service.visible !== false ? "Ocultar" : "Mostrar"}
@@ -406,7 +436,6 @@ export default function ServicesTab() {
                       Eliminar
                     </span>
                   </div>
-
                 </div>
               </div>
             </CardHeader>
@@ -421,7 +450,9 @@ export default function ServicesTab() {
               )}
               <p className="text-gray-400 text-sm">{service.description}</p>
               {service.duration && (
-                <p className="text-gray-500 text-xs mt-1">{getDurationLabel(service.duration)}</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  {getDurationLabel(service.duration)}
+                </p>
               )}
               {service.visible === false && (
                 <span className="inline-block mt-2 px-2 py-0.5 bg-white/10 text-gray-400 text-xs rounded-full">

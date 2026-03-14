@@ -8,6 +8,7 @@ import { format, isToday, isThisWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Trash2, ChevronDown, ChevronUp, Check } from "lucide-react";
 import emailjs from "@emailjs/browser";
+import DarkCalendar from "@/components/ui/calendar";
 
 const EMAILJS_SERVICE_ID         = "service_9pul3kl";
 const EMAILJS_TEMPLATE_CONFIRMED = "template_hhi6zxr";
@@ -75,7 +76,17 @@ const getSlotsForDate = (dateStr) => {
 };
 
 const isClosed = (dateStr) => { if (!dateStr) return false; return new Date(`${dateStr}T00:00:00`).getDay() === 0; };
+
+const isBarberDayOff = (dateStr, barberWorkingDays) => {
+  if (!dateStr) return false;
+  const day = new Date(`${dateStr}T00:00:00`).getDay();
+  const workDays = Array.isArray(barberWorkingDays) && barberWorkingDays.length > 0
+    ? barberWorkingDays : [1, 2, 3, 4, 5, 6];
+  return !workDays.includes(day);
+};
+
 const todayStr = () => new Date().toISOString().split("T")[0];
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const EMPTY_CREATE = {
   client_name: "", client_email: "", client_phone: "", date: "", time: "",
@@ -90,28 +101,15 @@ function ToastModal({ open, type, onClose }) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
       <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-center">
         <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto ${isConfirm ? "bg-green-500/20" : "bg-red-500/20"}`}>
-          {isConfirm
-            ? <Check size={28} className="text-green-400" />
-            : <Trash2 size={28} className="text-red-400" />
-          }
+          {isConfirm ? <Check size={28} className="text-green-400" /> : <Trash2 size={28} className="text-red-400" />}
         </div>
-        <h3 className="text-white font-bold text-xl">
-          {isConfirm ? "¡Cita creada!" : "Cita eliminada"}
-        </h3>
+        <h3 className="text-white font-bold text-xl">{isConfirm ? "¡Cita creada!" : "Cita eliminada"}</h3>
         <p className="text-gray-300 text-sm leading-relaxed">
-          {isConfirm
-            ? "Se ha enviado un correo de confirmación al cliente."
-            : "Se ha enviado un correo de cancelación al cliente."
-          }
+          {isConfirm ? "Se ha enviado un correo de confirmación al cliente." : "Se ha enviado un correo de cancelación al cliente."}
           <br />
-          <span className="text-gray-500">
-            Si no lo visualiza, indícale que revise su carpeta de spam.
-          </span>
+          <span className="text-gray-500">Si no lo visualiza, indícale que revise su carpeta de spam.</span>
         </p>
-        <button
-          onClick={onClose}
-          className={`w-full py-2 rounded-lg font-semibold transition-colors ${isConfirm ? "bg-white text-black hover:bg-gray-100" : "bg-red-600 text-white hover:bg-red-700"}`}
-        >
+        <button onClick={onClose} className={`w-full py-2 rounded-lg font-semibold transition-colors ${isConfirm ? "bg-white text-black hover:bg-gray-100" : "bg-red-600 text-white hover:bg-red-700"}`}>
           Entendido
         </button>
       </div>
@@ -352,10 +350,16 @@ export default function AppointmentsTab() {
     e.preventDefault();
     if (!createData.date || !createData.time) return alert("Selecciona fecha y hora.");
     if (isClosed(createData.date)) return alert("El local está cerrado los domingos.");
+    const selectedBarberData = barbers.find(b => b.id === createData.barber_id);
+    const barberWorkingDays = selectedBarberData?.working_days || [1,2,3,4,5,6];
+    if (isBarberDayOff(createData.date, barberWorkingDays)) return alert(`${selectedBarberData?.name || "El barbero"} no trabaja ese día.`);
+    if (createData.client_email && !isValidEmail(createData.client_email)) return alert("El correo no es válido.");
+    if (createData.client_phone && createData.client_phone.length < 8) return alert("El teléfono debe tener 8 dígitos.");
     setSaving(true);
     const service = services.find(s => s.id === createData.service_id);
     await addDoc(collection(db, "appointments"), {
       ...createData,
+      client_phone: createData.client_phone ? `+506${createData.client_phone}` : "",
       service_price: Number(createData.service_price),
       service_duration: Number(service?.duration || 30),
       created_at: serverTimestamp(),
@@ -409,6 +413,16 @@ export default function AppointmentsTab() {
   const allSelected = bulkSelected.size === filteredAppointments.length && filteredAppointments.length > 0;
   const barberDropdownItems = [{ value: "all", label: "Todos" }, ...barbers.map(b => ({ value: b.id, label: b.name }))];
   const barberTriggerLabel = selectedBarber === "all" ? "Barbero" : barbers.find(b => b.id === selectedBarber)?.name || "Barbero";
+
+  const createFormInvalid =
+    saving ||
+    !createData.client_name ||
+    !createData.date ||
+    !createData.time ||
+    !createData.barber_id ||
+    !createData.service_id ||
+    (createData.client_email && !isValidEmail(createData.client_email)) ||
+    (createData.client_phone && createData.client_phone.length < 8);
 
   return (
     <div className="p-4 space-y-6 text-white">
@@ -475,35 +489,104 @@ export default function AppointmentsTab() {
           <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <h3 className="text-lg font-bold">Nueva Cita</h3>
             <form onSubmit={handleCreate} className="space-y-4">
+
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nombre del cliente"><input type="text" required value={createData.client_name} onChange={e => setCreateData({...createData, client_name: e.target.value})} className={iCls} /></Field>
-                <Field label="Correo"><input type="email" value={createData.client_email} onChange={e => setCreateData({...createData, client_email: e.target.value})} className={iCls} /></Field>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Nombre del cliente</label>
+                  <input type="text" required value={createData.client_name}
+                    onChange={e => { const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ""); setCreateData({...createData, client_name: val}); }}
+                    className={iCls} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Correo</label>
+                  <input type="text" value={createData.client_email}
+                    onChange={e => setCreateData({...createData, client_email: e.target.value})}
+                    className={iCls} />
+                  {createData.client_email && !isValidEmail(createData.client_email) && (
+                    <p className="text-red-400 text-xs">Correo inválido.</p>
+                  )}
+                </div>
               </div>
-              <Field label="Teléfono"><input type="tel" value={createData.client_phone} onChange={e => setCreateData({...createData, client_phone: e.target.value})} className={iCls} /></Field>
-              <Field label="Fecha">
-                <input type="date" required min={todayStr()} value={createData.date} onChange={e => { const d = e.target.value; if (isClosed(d)) { alert("El local está cerrado los domingos."); setCreateData({...createData, date:"", time:""}); } else setCreateData({...createData, date:d, time:""}); }} className={iCls} />
-                {createData.date && !isClosed(createData.date) && <p className="text-gray-500 text-xs mt-1">Horario: {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.end}</p>}
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400">Teléfono</label>
+                <div className="flex gap-2">
+                  <span className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-gray-400 text-sm flex items-center">+506</span>
+                  <input type="tel" placeholder="8 dígitos" value={createData.client_phone} maxLength={8}
+                    onChange={e => { const val = e.target.value.replace(/\D/g, "").slice(0, 8); setCreateData({...createData, client_phone: val}); }}
+                    className={`${iCls} flex-1`} />
+                </div>
+                {createData.client_phone && createData.client_phone.length < 8 && (
+                  <p className="text-red-400 text-xs">El número debe tener 8 dígitos.</p>
+                )}
+              </div>
+
+              <Field label="Barbero">
+                <select required value={createData.barber_id} onChange={e => {
+                  const b = barbers.find(x => x.id === e.target.value);
+                  if (!b) return;
+                  setCreateData({...createData, barber_id: b.id, barber_name: b.name, date: "", time: ""});
+                }} className={sCls}>
+                  <option value="" disabled>Seleccionar barbero</option>
+                  {barbers.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
+                </select>
               </Field>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-gray-400">
+                  Fecha{createData.date && <span className="text-white ml-2 font-semibold">{format(new Date(`${createData.date}T00:00:00`), "PPP", { locale: es })}</span>}
+                </label>
+                {createData.barber_id ? (
+                  <>
+                    <DarkCalendar
+                      value={createData.date ? new Date(`${createData.date}T00:00:00`) : null}
+                      onChange={(date) => {
+                        const barberData = barbers.find(b => b.id === createData.barber_id);
+                        const workDays = barberData?.working_days || [1,2,3,4,5,6];
+                        const dateStr = format(date, "yyyy-MM-dd");
+                        if (isClosed(dateStr)) { alert("El local está cerrado los domingos."); }
+                        else if (isBarberDayOff(dateStr, workDays)) { alert(`${barberData?.name || "El barbero"} no trabaja ese día.`); }
+                        else { setCreateData({...createData, date: dateStr, time: ""}); }
+                      }}
+                      minDate={new Date()}
+                      maxDate={new Date(new Date().setDate(new Date().getDate() + 30))}
+                      tileDisabled={({ date }) => {
+                        const barberData = barbers.find(b => b.id === createData.barber_id);
+                        const workDays = barberData?.working_days || [1,2,3,4,5,6];
+                        const day = date.getDay();
+                        return day === 0 || !workDays.includes(day);
+                      }}
+                    />
+                    {createData.date && (
+                      <p className="text-gray-500 text-xs">
+                        Horario: {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${createData.date}T00:00:00`).getDay()]?.end}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-sm">Selecciona un barbero primero.</p>
+                )}
+              </div>
+
               <Field label="Servicio">
                 <select required value={createData.service_id} onChange={e => { const s = services.find(x => x.id === e.target.value); if (!s) return; setCreateData({...createData, service_id:s.id, service_name:s.name, service_price:s.price, time:""}); }} className={sCls}>
                   <option value="" disabled>Seleccionar servicio</option>
                   {services.map(s => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
                 </select>
               </Field>
-              <Field label="Barbero">
-                <select required value={createData.barber_id} onChange={e => { const b = barbers.find(x => x.id === e.target.value); if (!b) return; setCreateData({...createData, barber_id:b.id, barber_name:b.name}); }} className={sCls}>
-                  <option value="" disabled>Seleccionar barbero</option>
-                  {barbers.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
-                </select>
-              </Field>
+
               <Field label="Precio"><div className={iCls}>{createData.service_price ? `₡${Number(createData.service_price).toLocaleString("es-CR")}` : "—"}</div></Field>
+
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-gray-400">Hora — seleccionada: <span className="text-white font-semibold">{createData.time || "ninguna"}</span></label>
                 <SlotPicker date={createData.date} selectedTime={createData.time} appointments={appointments} excludeId={null} onChange={slot => setCreateData({...createData, time:slot})} serviceDuration={Number(services.find(s => s.id === createData.service_id)?.duration || 30)} />
               </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => { setShowCreate(false); setCreateData(EMPTY_CREATE); }} className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors">Cancelar</button>
-                <button type="submit" disabled={saving || !createData.client_name || !createData.date || !createData.time || !createData.barber_id || !createData.service_id} className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{saving ? "Guardando…" : "Crear cita"}</button>
+                <button type="submit" disabled={createFormInvalid} className="flex-1 bg-white text-black py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {saving ? "Guardando…" : "Crear cita"}
+                </button>
               </div>
             </form>
           </div>
@@ -554,32 +637,72 @@ export default function AppointmentsTab() {
                     {!bulkMode && selected?.id === a.id && (
                       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 mt-2">
                         <h2 className="text-lg font-bold">Detalles de la cita</h2>
+
                         <div className="grid grid-cols-2 gap-3">
                           <Field label="Nombre"><input type="text" value={editData.client_name || ""} onChange={e => setEditData({...editData, client_name:e.target.value})} className={iCls2} /></Field>
                           <Field label="Correo"><input type="email" value={editData.client_email || editData.email || ""} onChange={e => setEditData({...editData, client_email:e.target.value, email:e.target.value})} className={iCls2} /></Field>
                           <Field label="Teléfono" className="col-span-2 sm:col-span-1"><input type="tel" value={editData.client_phone || ""} onChange={e => setEditData({...editData, client_phone:e.target.value})} className={iCls2} /></Field>
-                          <Field label="Fecha" className="col-span-2 sm:col-span-1">
-                            <input type="date" min={todayStr()} value={editData.date || ""} onChange={e => { const d = e.target.value; if (isClosed(d)) { alert("El local está cerrado los domingos."); setEditData({...editData, date:"", time:""}); } else setEditData({...editData, date:d, time:""}); }} className={iCls2} />
-                            {editData.date && !isClosed(editData.date) && <p className="text-gray-500 text-xs mt-1">Horario: {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.end}</p>}
-                          </Field>
                         </div>
+
+                        <Field label="Barbero">
+                          <select value={editData.barber_id || ""} onChange={e => { const b = barbers.find(x => x.id === e.target.value); if (!b) return; setEditData({...editData, barber_id:b.id, barber_name:b.name, date:"", time:""}); }} className={sCls2}>
+                            <option value="" disabled>Seleccionar barbero</option>
+                            {barbers.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
+                          </select>
+                        </Field>
+
                         <Field label="Servicio">
                           <select value={editData.service_id || ""} onChange={e => { const s = services.find(x => x.id === e.target.value); if (!s) return; setEditData({...editData, service_id:s.id, service_name:s.name, service_price:s.price, service_duration:s.duration, time:""}); }} className={sCls2}>
                             <option value="" disabled>Seleccionar servicio</option>
                             {services.map(s => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
                           </select>
                         </Field>
-                        <Field label="Barbero">
-                          <select value={editData.barber_id || ""} onChange={e => { const b = barbers.find(x => x.id === e.target.value); if (!b) return; setEditData({...editData, barber_id:b.id, barber_name:b.name}); }} className={sCls2}>
-                            <option value="" disabled>Seleccionar barbero</option>
-                            {barbers.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
-                          </select>
-                        </Field>
+
                         <p className="text-sm text-gray-300">Precio: <span className="font-semibold text-white">{editData.service_price ? `₡${Number(editData.service_price).toLocaleString("es-CR")}` : "—"}</span></p>
+
+                        {/* FECHA CON DARK CALENDAR */}
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs text-gray-400">
+                            Fecha{editData.date && <span className="text-white ml-2 font-semibold">{format(new Date(`${editData.date}T00:00:00`), "PPP", { locale: es })}</span>}
+                          </label>
+                          {editData.barber_id ? (
+                            <>
+                              <DarkCalendar
+                                value={editData.date ? new Date(`${editData.date}T00:00:00`) : null}
+                                onChange={(date) => {
+                                  const barberData = barbers.find(b => b.id === editData.barber_id);
+                                  const workDays = barberData?.working_days || [1,2,3,4,5,6];
+                                  const dateStr = format(date, "yyyy-MM-dd");
+                                  if (isClosed(dateStr)) { alert("El local está cerrado los domingos."); }
+                                  else if (isBarberDayOff(dateStr, workDays)) { alert(`${barberData?.name || "El barbero"} no trabaja ese día.`); }
+                                  else { setEditData({...editData, date: dateStr, time: ""}); }
+                                }}
+                                minDate={new Date()}
+                                maxDate={new Date(new Date().setDate(new Date().getDate() + 30))}
+                                tileDisabled={({ date }) => {
+                                  const barberData = barbers.find(b => b.id === editData.barber_id);
+                                  const workDays = barberData?.working_days || [1,2,3,4,5,6];
+                                  const day = date.getDay();
+                                  return day === 0 || !workDays.includes(day);
+                                }}
+                              />
+                              {editData.date && (
+                                <p className="text-gray-500 text-xs">
+                                  Horario: {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.start} – {SCHEDULE[new Date(`${editData.date}T00:00:00`).getDay()]?.end}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-gray-500 text-sm">Selecciona un barbero primero.</p>
+                          )}
+                        </div>
+
+                        {/* HORA */}
                         <div className="flex flex-col gap-2">
                           <label className="text-xs text-gray-400">Hora — seleccionada: <span className="text-white font-semibold">{editData.time || "ninguna"}</span></label>
                           <SlotPicker date={editData.date} selectedTime={editData.time} appointments={appointments} excludeId={selected.id} onChange={slot => setEditData({...editData, time:slot})} serviceDuration={Number(services.find(s => s.id === editData.service_id)?.duration || editData.service_duration || 30)} />
                         </div>
+
                         <div className="flex gap-3 pt-2">
                           <button onClick={handleUpdate} className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-100">Actualizar</button>
                           <button onClick={() => handleDelete(selected.id)} className="bg-red-600 px-4 py-2 rounded-lg hover:bg-red-700">Eliminar</button>

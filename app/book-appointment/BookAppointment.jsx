@@ -112,6 +112,7 @@ export default function BookAppointment() {
   const [clientPhone, setClientPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ name: "", email: "", phone: "" });
 
   /* ── FETCH ── */
   useEffect(() => {
@@ -157,11 +158,17 @@ export default function BookAppointment() {
   const allSlotsTaken = availableSlots.length > 0 && availableSlots.every((s) => s.taken);
 
   const tileDisabled = ({ date }) => {
-    if (date.getDay() === 0) return true;
+    const day = date.getDay();
+    if (day === 0) return true;
+
+    // Bloquear días que no trabaja el barbero
+    const barberWorkingDays = selectedBarber?.working_days || [1,2,3,4,5,6];
+    if (!barberWorkingDays.includes(day)) return true;
+
     const dateStr = format(date, "yyyy-MM-dd");
     const slots = getSlotsForDate(date);
     const serviceDuration = Number(selectedService?.duration || 30);
-    const scheduleEndMin = toMinutes(SCHEDULE[date.getDay()]?.end || "8:00 PM");
+    const scheduleEndMin = toMinutes(SCHEDULE[day]?.end || "8:00 PM");
     const blockedSlots = getBlockedSlots(appointments, dateStr, serviceDuration);
     return slots.length > 0 && slots.every((s) => !slotHasRoom(s, blockedSlots, scheduleEndMin, serviceDuration));
   };
@@ -170,9 +177,21 @@ export default function BookAppointment() {
     switch (step) {
       case 1: return !!selectedBarber;
       case 2: return !!selectedService;
-      case 3: return !!selectedDate && selectedDate.getDay() !== 0 && !allSlotsTaken;
+      case 3: {
+        if (!selectedDate) return false;
+        const day = selectedDate.getDay();
+        if (day === 0) return false;
+        const barberWorkingDays = selectedBarber?.working_days || [1,2,3,4,5,6];
+        if (!barberWorkingDays.includes(day)) return false;
+        return !allSlotsTaken;
+      }
       case 4: return !!selectedTime;
-      case 5: return clientName.trim() && clientEmail.trim() && clientPhone.trim();
+      case 5: {
+        const nameOk  = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(clientName.trim()) && clientName.trim().length > 0;
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim());
+        const phoneOk = /^\d{8}$/.test(clientPhone.trim());
+        return nameOk && emailOk && phoneOk;
+      }
       default: return false;
     }
   };
@@ -192,7 +211,7 @@ export default function BookAppointment() {
       time: selectedTime,
       client_name: clientName,
       client_email: clientEmail,
-      client_phone: clientPhone,
+      client_phone: `+506${clientPhone}`,
       status: "pendiente",
       created_at: new Date(),
     });
@@ -223,30 +242,30 @@ export default function BookAppointment() {
   if (isComplete) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-6">
-  <div className="text-center max-w-md">
-    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
-    <h1 className="text-3xl font-black text-white mb-4">¡Cita confirmada!</h1>
-    <p className="text-gray-400 mb-2">
-      Te esperamos el{" "}
-      <span className="text-white font-semibold">
-        {format(selectedDate, "PPP", { locale: es })}
-      </span>{" "}
-      a las{" "}
-      <span className="text-white font-semibold">{selectedTime}</span>
-    </p>
-    <p className="text-gray-500 text-sm mb-6">
-      Te enviamos un correo de confirmación.{" "}
-      <span className="text-gray-400">Si no lo ves, revisa tu carpeta de spam.</span>
-    </p>
-    <button
-      type="button"
-      onClick={() => (window.location.href = "/")}
-      className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
-    >
-      Volver al inicio
-    </button>
-  </div>
-</div>
+        <div className="text-center max-w-md">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-black text-white mb-4">¡Cita confirmada!</h1>
+          <p className="text-gray-400 mb-2">
+            Te esperamos el{" "}
+            <span className="text-white font-semibold">
+              {format(selectedDate, "PPP", { locale: es })}
+            </span>{" "}
+            a las{" "}
+            <span className="text-white font-semibold">{selectedTime}</span>
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            Te enviamos un correo de confirmación.{" "}
+            <span className="text-gray-400">Si no lo ves, revisa tu carpeta de spam.</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/")}
+            className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase text-sm hover:bg-gray-100 transition"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -274,7 +293,7 @@ export default function BookAppointment() {
                   {barbers.map((barber) => (
                     <button
                       key={barber.id}
-                      onClick={() => setSelectedBarber(barber)}
+                      onClick={() => { setSelectedBarber(barber); setSelectedDate(null); setSelectedTime(null); }}
                       className={`p-4 rounded-2xl border text-left ${
                         selectedBarber?.id === barber.id
                           ? "border-white bg-white/10"
@@ -320,34 +339,45 @@ export default function BookAppointment() {
             )}
 
             {/* STEP 3 — fecha */}
-            {step === 3 && (
-              <>
-                <h2 className="text-2xl text-white font-bold mb-2">Selecciona la fecha</h2>
-                <p className="text-gray-500 text-sm mb-6">
-                  Lun–Vie: 9:00 AM – 8:00 PM &nbsp;|&nbsp; Sáb: 9:00 AM – 6:00 PM &nbsp;|&nbsp; Dom: Cerrado
-                </p>
-                <div className="flex justify-center">
-                  <DarkCalendar
-                    value={selectedDate}
-                    onChange={(date) => { setSelectedDate(date); setSelectedTime(null); }}
-                    minDate={new Date()}
-                    maxDate={new Date(new Date().setDate(new Date().getDate() + 30))}
-                    tileDisabled={tileDisabled}
-                  />
-                </div>
-                {selectedDate && selectedDate.getDay() === 0 && (
-                  <p className="text-red-400 text-sm text-center mt-4">Los domingos estamos cerrados. Por favor elige otro dia.</p>
-                )}
-                {selectedDate && selectedDate.getDay() !== 0 && allSlotsTaken && (
-                  <p className="text-red-400 text-sm text-center mt-4">No hay horas disponibles para este dia. Por favor elige otro.</p>
-                )}
-                {selectedDate && selectedDate.getDay() !== 0 && !allSlotsTaken && (
-                  <p className="text-gray-500 text-sm text-center mt-4">
-                    Horario: {SCHEDULE[selectedDate.getDay()]?.start} – {SCHEDULE[selectedDate.getDay()]?.end}
-                  </p>
-                )}
-              </>
-            )}
+{step === 3 && (
+  <>
+    <h2 className="text-2xl text-white font-bold mb-2">Selecciona la fecha</h2>
+    <p className="text-gray-500 text-sm mb-6">
+      Horario: 10:00 AM – 8:00 PM &nbsp;|&nbsp;
+      {(() => {
+        const days = selectedBarber?.working_days || [1,2,3,4,5,6];
+        const names = { 1:"Lun", 2:"Mar", 3:"Mié", 4:"Jue", 5:"Vie", 6:"Sáb" };
+        return [...days].sort((a, b) => a - b).map(d => names[d]).join(", ");
+      })()} &nbsp;|&nbsp; Dom: Cerrado
+    </p>
+    <div className="flex justify-center">
+      <DarkCalendar
+        value={selectedDate}
+        onChange={(date) => { setSelectedDate(date); setSelectedTime(null); }}
+        minDate={new Date()}
+        maxDate={new Date(new Date().setDate(new Date().getDate() + 30))}
+        tileDisabled={tileDisabled}
+      />
+    </div>
+    {selectedDate && selectedDate.getDay() === 0 && (
+      <p className="text-red-400 text-sm text-center mt-4">Los domingos estamos cerrados. Por favor elige otro dia.</p>
+    )}
+    {selectedDate && selectedDate.getDay() !== 0 && (() => {
+      const barberWorkingDays = selectedBarber?.working_days || [1,2,3,4,5,6];
+      if (!barberWorkingDays.includes(selectedDate.getDay())) {
+        return <p className="text-red-400 text-sm text-center mt-4">{selectedBarber?.name} no trabaja ese día. Por favor elige otro.</p>;
+      }
+      if (allSlotsTaken) {
+        return <p className="text-red-400 text-sm text-center mt-4">No hay horas disponibles para este dia. Por favor elige otro.</p>;
+      }
+      return (
+        <p className="text-gray-500 text-sm text-center mt-4">
+          Horario: {SCHEDULE[selectedDate.getDay()]?.start} – {SCHEDULE[selectedDate.getDay()]?.end}
+        </p>
+      );
+    })()}
+  </>
+)}
 
             {/* STEP 4 — hora */}
             {step === 4 && (
@@ -394,26 +424,81 @@ export default function BookAppointment() {
               <>
                 <h2 className="text-2xl text-white font-bold mb-6">Tus datos</h2>
                 <div className="space-y-4 max-w-md mx-auto">
-                  <Input
-                    placeholder="Nombre completo"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                  <Input
-                    type="email"
-                    placeholder="Correo electronico"
-                    value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                  <Input
-                    type="tel"
-                    placeholder="Numero de telefono"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
+
+                  {/* NOMBRE */}
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      placeholder="Nombre completo"
+                      value={clientName}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "");
+                        setClientName(val);
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          name: val.trim().length === 0 ? "El nombre es requerido." : "",
+                        }));
+                      }}
+                      className={`bg-white/5 border-white/10 text-white ${fieldErrors.name ? "border-red-500/60" : ""}`}
+                    />
+                    {fieldErrors.name && <p className="text-red-400 text-xs">{fieldErrors.name}</p>}
+                  </div>
+
+                  {/* EMAIL */}
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      type="text"
+                      placeholder="Correo electrónico"
+                      value={clientEmail}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setClientEmail(val);
+                        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          email: val.trim().length === 0 ? "" : !valid ? "Correo inválido." : "",
+                        }));
+                      }}
+                      onBlur={() => {
+                        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim());
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          email: clientEmail.trim().length === 0 ? "El correo es requerido." : !valid ? "Correo inválido." : "",
+                        }));
+                      }}
+                      className={`bg-white/5 border-white/10 text-white ${fieldErrors.email ? "border-red-500/60" : ""}`}
+                    />
+                    {fieldErrors.email && <p className="text-red-400 text-xs">{fieldErrors.email}</p>}
+                  </div>
+
+                  {/* TELÉFONO */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-2">
+                      <span className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-gray-400 text-sm flex items-center">+506</span>
+                      <Input
+                        type="tel"
+                        placeholder="8 dígitos"
+                        value={clientPhone}
+                        maxLength={8}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                          setClientPhone(val);
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            phone: val.length > 0 && val.length < 8 ? "El número debe tener 8 dígitos." : "",
+                          }));
+                        }}
+                        onBlur={() => {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            phone: clientPhone.trim().length === 0 ? "El teléfono es requerido." : clientPhone.length < 8 ? "El número debe tener 8 dígitos." : "",
+                          }));
+                        }}
+                        className={`bg-white/5 border-white/10 text-white flex-1 ${fieldErrors.phone ? "border-red-500/60" : ""}`}
+                      />
+                    </div>
+                    {fieldErrors.phone && <p className="text-red-400 text-xs">{fieldErrors.phone}</p>}
+                  </div>
+
                 </div>
               </>
             )}

@@ -27,19 +27,19 @@ export default function Footer() {
           {/* Social Icons (igual que antes) */}
           <div className="flex items-center gap-6">
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/anthony.corrales.756?locale=es_LA"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-amber-400 hover:border-amber-400/50 transition-all duration-300"
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white-400 hover:border-white-400/50 transition-all duration-300"
             >
               <FacebookIcon size={18} />
             </a>
 
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/bababway_88/"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-amber-400 hover:border-amber-400/50 transition-all duration-300"
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white-400 hover:border-white-400/50 transition-all duration-300"
             >
               <InstagramIcon size={18} />
             </a>
@@ -48,7 +48,7 @@ export default function Footer() {
               href="https://wa.me/50685654169"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-amber-400 hover:border-amber-400/50 transition-all duration-300"
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white-400 hover:border-white-400/50 transition-all duration-300"
             >
               <MessageCircle size={18} />
             </a>

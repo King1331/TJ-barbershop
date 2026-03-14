@@ -13,8 +13,7 @@ import Link from "next/link";
 
 export default function LocationSection() {
   const schedule = [
-    { day: "Lunes - Viernes", hours: "9:00 AM - 8:00 PM" },
-    { day: "Sábados", hours: "9:00 AM - 6:00 PM" },
+    { day: "Lunes - Sabado", hours: "10:00 AM - 8:00 PM" },
     { day: "Domingos", hours: "Cerrado" },
   ];
 
