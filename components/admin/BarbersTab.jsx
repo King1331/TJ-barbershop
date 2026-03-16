@@ -98,6 +98,10 @@ export default function BarbersTab() {
     open: false, conflicts: [], pendingData: null, barberId: null, barberName: "",
   });
 
+  const [deleteModal, setDeleteModal] = useState({
+    open: false, barberId: null, barberName: "", conflicts: [],
+  });
+
   const showConfirm = ({ title, message, confirmLabel = "Continuar", danger = false, onConfirm }) => {
     setConfirmModal({ open: true, title, message, confirmLabel, danger, onConfirm });
   };
@@ -142,19 +146,7 @@ export default function BarbersTab() {
       .filter((a) => a.date >= today);
 
     if (futureLinked.length > 0) {
-      showConfirm({
-        title: "Eliminar barbero",
-        message: `${barber.name} tiene ${futureLinked.length} cita${futureLinked.length !== 1 ? "s" : ""} a futuro asignada${futureLinked.length !== 1 ? "s" : ""}. Al eliminarlo, esas citas serán canceladas y los horarios liberados. ¿Estás seguro que quieres continuar?`,
-        confirmLabel: "Sí, eliminar",
-        danger: true,
-        onConfirm: async () => {
-          await Promise.all(futureLinked.map((a) => deleteDoc(doc(db, "appointments", a.id))));
-          await Promise.all(futureLinked.map((a) => sendCancellationEmail(a)));
-          await deleteDoc(doc(db, "barber", barber.id));
-          fetchBarbers();
-          closeConfirm();
-        },
-      });
+      setDeleteModal({ open: true, barberId: barber.id, barberName: barber.name, conflicts: futureLinked });
     } else {
       showConfirm({
         title: "Eliminar barbero",
@@ -168,6 +160,15 @@ export default function BarbersTab() {
         },
       });
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { barberId, conflicts } = deleteModal;
+    setDeleteModal({ open: false, barberId: null, barberName: "", conflicts: [] });
+    await Promise.all(conflicts.map(a => deleteDoc(doc(db, "appointments", a.id))));
+    await Promise.all(conflicts.filter(a => a.client_email).map(a => sendCancellationEmail(a)));
+    await deleteDoc(doc(db, "barber", barberId));
+    fetchBarbers();
   };
 
   /* ── HELPERS ── */
@@ -270,7 +271,7 @@ export default function BarbersTab() {
         onCancel={closeConfirm}
       />
 
-      {/* CONFLICT MODAL */}
+      {/* CONFLICT MODAL — cambio de horario */}
       {conflictModal.open && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.92)" }}>
           <div className="bg-[#1a1a1a] border border-yellow-500/30 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
@@ -326,6 +327,69 @@ export default function BarbersTab() {
                 className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
               >
                 Sí, actualizar y eliminar citas
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* DELETE MODAL — eliminar barbero con citas */}
+      {deleteModal.open && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.92)" }}>
+          <div className="bg-[#1a1a1a] border border-yellow-500/30 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Eliminar barbero</h3>
+                <p className="text-yellow-400 text-xs font-medium">Este barbero tiene citas activas asociadas</p>
+              </div>
+            </div>
+
+            <p className="text-gray-300 text-sm leading-relaxed">
+              <span className="text-white font-semibold">{deleteModal.barberName}</span> tiene{" "}
+              <span className="text-yellow-400 font-semibold">
+                {deleteModal.conflicts.length} cita{deleteModal.conflicts.length !== 1 ? "s" : ""} agendada{deleteModal.conflicts.length !== 1 ? "s" : ""}
+              </span>{" "}
+              que serán canceladas al eliminarlo.
+            </p>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              {deleteModal.conflicts.map((a, i) => (
+                <div key={a.id} className={`px-4 py-3 flex justify-between items-center text-sm ${i !== 0 ? "border-t border-white/5" : ""}`}>
+                  <div>
+                    <p className="text-white font-medium">{a.client_name}</p>
+                    <p className="text-gray-400 text-xs">{a.service_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-300 text-xs">{a.date}</p>
+                    <p className="text-gray-500 text-xs">{a.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <p className="text-red-400 text-xs leading-relaxed">
+                <span className="font-semibold">Al continuar:</span> estas citas serán eliminadas permanentemente y se enviará un correo de cancelación a cada cliente.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setDeleteModal({ open: false, barberId: null, barberName: "", conflicts: [] })}
+                className="flex-1 border border-white/20 text-white py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
+              >
+                Sí, eliminar barbero
               </button>
             </div>
           </div>
@@ -512,16 +576,10 @@ export default function BarbersTab() {
                   {DAYS.map(({ value, label }) => {
                     const active = formData.working_days.includes(value);
                     return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => toggleDay(value)}
+                      <button key={value} type="button" onClick={() => toggleDay(value)}
                         className={`py-2 rounded-lg text-sm font-semibold transition-colors border ${
-                          active
-                            ? "bg-white text-black border-white"
-                            : "bg-white/5 text-gray-500 border-white/10 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
+                          active ? "bg-white text-black border-white" : "bg-white/5 text-gray-500 border-white/10 hover:bg-white/10 hover:text-white"
+                        }`}>
                         {label}
                       </button>
                     );

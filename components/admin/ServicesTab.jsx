@@ -56,7 +56,6 @@ const DURATION_OPTIONS = [
 /* ─── Confirm Modal ─── */
 function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel = "Continuar", danger = false }) {
   if (!open) return null;
-
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
@@ -70,20 +69,8 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel 
         <h3 className="text-white font-bold text-lg">{title}</h3>
         <p className="text-gray-300 text-sm leading-relaxed">{message}</p>
         <div className="flex gap-3 pt-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              danger ? "bg-red-600 text-white hover:bg-red-700" : "bg-white text-black hover:bg-gray-100"
-            }`}
-          >
-            {confirmLabel}
-          </button>
+          <button onClick={onCancel} className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">Cancelar</button>
+          <button onClick={onConfirm} className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${danger ? "bg-red-600 text-white hover:bg-red-700" : "bg-white text-black hover:bg-gray-100"}`}>{confirmLabel}</button>
         </div>
       </div>
     </div>,
@@ -103,6 +90,10 @@ export default function ServicesTab() {
 
   const [confirmModal, setConfirmModal] = useState({
     open: false, title: "", message: "", confirmLabel: "Continuar", danger: false, onConfirm: null,
+  });
+
+  const [deleteModal, setDeleteModal] = useState({
+    open: false, serviceId: null, serviceName: "", conflicts: [],
   });
 
   const showConfirm = ({ title, message, confirmLabel = "Continuar", danger = false, onConfirm }) => {
@@ -167,32 +158,15 @@ export default function ServicesTab() {
   /* ── DELETE ── */
   const handleDelete = async (id) => {
     const today = new Date().toISOString().split("T")[0];
-
-    // Solo filtra por service_id — sin índice compuesto
-    const apptQuery = query(
-      collection(db, "appointments"),
-      where("service_id", "==", id)
-    );
+    const service = services.find(s => s.id === id);
+    const apptQuery = query(collection(db, "appointments"), where("service_id", "==", id));
     const apptSnap = await getDocs(apptQuery);
-
-    // Filtra fechas futuras en el cliente
     const futureLinked = apptSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((a) => a.date >= today);
 
     if (futureLinked.length > 0) {
-      showConfirm({
-        title: "Eliminar servicio",
-        message: `Este servicio tiene ${futureLinked.length} cita${futureLinked.length !== 1 ? "s" : ""} a futuro vinculada${futureLinked.length !== 1 ? "s" : ""}. Al eliminarlo, esas citas serán canceladas y los horarios liberados. ¿Estás seguro que quieres continuar?`,
-        confirmLabel: "Sí, eliminar",
-        danger: true,
-        onConfirm: async () => {
-          await Promise.all(futureLinked.map((a) => deleteDoc(doc(db, "appointments", a.id))));
-          await deleteDoc(doc(db, "services", id));
-          fetchServices();
-          closeConfirm();
-        },
-      });
+      setDeleteModal({ open: true, serviceId: id, serviceName: service?.name || "", conflicts: futureLinked });
     } else {
       showConfirm({
         title: "Eliminar servicio",
@@ -206,6 +180,14 @@ export default function ServicesTab() {
         },
       });
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { serviceId, conflicts } = deleteModal;
+    setDeleteModal({ open: false, serviceId: null, serviceName: "", conflicts: [] });
+    await Promise.all(conflicts.map((a) => deleteDoc(doc(db, "appointments", a.id))));
+    await deleteDoc(doc(db, "services", serviceId));
+    fetchServices();
   };
 
   /* ── EDIT ── */
@@ -237,6 +219,7 @@ export default function ServicesTab() {
 
   return (
     <div className="space-y-6">
+
       <ConfirmModal
         open={confirmModal.open}
         title={confirmModal.title}
@@ -246,6 +229,69 @@ export default function ServicesTab() {
         onConfirm={confirmModal.onConfirm}
         onCancel={closeConfirm}
       />
+
+      {/* DELETE WITH CONFLICTS MODAL */}
+      {deleteModal.open && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.92)" }}>
+          <div className="bg-[#1a1a1a] border border-yellow-500/30 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Eliminar servicio</h3>
+                <p className="text-yellow-400 text-xs font-medium">Este servicio tiene citas activas asociadas</p>
+              </div>
+            </div>
+
+            <p className="text-gray-300 text-sm leading-relaxed">
+              El servicio <span className="text-white font-semibold">"{deleteModal.serviceName}"</span> tiene{" "}
+              <span className="text-yellow-400 font-semibold">
+                {deleteModal.conflicts.length} cita{deleteModal.conflicts.length !== 1 ? "s" : ""} agendada{deleteModal.conflicts.length !== 1 ? "s" : ""}
+              </span>{" "}
+              que serán afectadas al eliminarlo.
+            </p>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              {deleteModal.conflicts.map((a, i) => (
+                <div key={a.id} className={`px-4 py-3 flex justify-between items-center text-sm ${i !== 0 ? "border-t border-white/5" : ""}`}>
+                  <div>
+                    <p className="text-white font-medium">{a.client_name}</p>
+                    <p className="text-gray-400 text-xs">{a.barber_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-300 text-xs">{a.date}</p>
+                    <p className="text-gray-500 text-xs">{a.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <p className="text-red-400 text-xs leading-relaxed">
+                <span className="font-semibold">Al continuar:</span> estas citas serán eliminadas permanentemente y se enviará un correo de cancelación a cada cliente.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setDeleteModal({ open: false, serviceId: null, serviceName: "", conflicts: [] })}
+                className="flex-1 border border-white/20 text-white py-2.5 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
+              >
+                Sí, eliminar servicio
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
@@ -272,9 +318,7 @@ export default function ServicesTab() {
                 <Input
                   required
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -284,9 +328,7 @@ export default function ServicesTab() {
                 <Textarea
                   rows={3}
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -300,10 +342,7 @@ export default function ServicesTab() {
                     value={formData.price}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (
-                        val === "" ||
-                        (Number(val) <= 9999999 && Number(val) >= 0)
-                      ) {
+                      if (val === "" || (Number(val) <= 9999999 && Number(val) >= 0)) {
                         setFormData({ ...formData, price: val });
                       }
                     }}
@@ -317,22 +356,12 @@ export default function ServicesTab() {
                   <select
                     required
                     value={formData.duration}
-                    onChange={(e) =>
-                      setFormData({ ...formData, duration: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-white focus:outline-none mt-1"
                   >
-                    <option value="" disabled className="text-black">
-                      Seleccionar duración
-                    </option>
+                    <option value="" disabled className="text-black">Seleccionar duración</option>
                     {DURATION_OPTIONS.map((opt) => (
-                      <option
-                        key={opt.value}
-                        value={opt.value}
-                        className="text-black"
-                      >
-                        {opt.label}
-                      </option>
+                      <option key={opt.value} value={opt.value} className="text-black">{opt.label}</option>
                     ))}
                   </select>
                 </div>
@@ -342,9 +371,7 @@ export default function ServicesTab() {
                 <Label>URL Imagen</Label>
                 <Input
                   value={formData.image_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, image_url: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                   className="bg-white/5 border-white/10"
                 />
               </div>
@@ -352,9 +379,7 @@ export default function ServicesTab() {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.visible}
-                  onCheckedChange={(v) =>
-                    setFormData({ ...formData, visible: v })
-                  }
+                  onCheckedChange={(v) => setFormData({ ...formData, visible: v })}
                 />
                 <Label>Visible en el frontend</Label>
               </div>
@@ -383,7 +408,7 @@ export default function ServicesTab() {
       {/* LIST */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map((service) => (
-          <Card key={service.id} className="bg-white/5 border-white/10">
+          <Card key={service.id} className="bg-white/5 border-white/10 overflow-visible">
             <CardHeader>
               <div className="flex justify-between">
                 <div>
@@ -396,15 +421,8 @@ export default function ServicesTab() {
                 <div className="flex gap-2">
                   {/* OJO */}
                   <div className="relative group">
-                    <button
-                      onClick={() => toggleVisibility(service)}
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      {service.visible !== false ? (
-                        <Eye size={18} />
-                      ) : (
-                        <EyeOff size={18} />
-                      )}
+                    <button onClick={() => toggleVisibility(service)} className="text-gray-400 hover:text-white transition-colors">
+                      {service.visible !== false ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                       {service.visible !== false ? "Ocultar" : "Mostrar"}
@@ -413,10 +431,7 @@ export default function ServicesTab() {
 
                   {/* LÁPIZ */}
                   <div className="relative group">
-                    <button
-                      onClick={() => handleEdit(service)}
-                      className="text-gray-400 hover:text-blue-400 transition-colors"
-                    >
+                    <button onClick={() => handleEdit(service)} className="text-gray-400 hover:text-blue-400 transition-colors">
                       <Edit size={18} />
                     </button>
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
@@ -426,10 +441,7 @@ export default function ServicesTab() {
 
                   {/* BASURERO */}
                   <div className="relative group">
-                    <button
-                      onClick={() => handleDelete(service.id)}
-                      className="text-gray-400 hover:text-red-400 transition-colors"
-                    >
+                    <button onClick={() => handleDelete(service.id)} className="text-gray-400 hover:text-red-400 transition-colors">
                       <Trash2 size={18} />
                     </button>
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
@@ -442,22 +454,14 @@ export default function ServicesTab() {
 
             <CardContent>
               {service.image_url && (
-                <img
-                  src={service.image_url}
-                  className="w-full h-32 object-cover rounded mb-3"
-                  alt={service.name}
-                />
+                <img src={service.image_url} className="w-full h-32 object-cover rounded mb-3" alt={service.name} />
               )}
               <p className="text-gray-400 text-sm">{service.description}</p>
               {service.duration && (
-                <p className="text-gray-500 text-xs mt-1">
-                  {getDurationLabel(service.duration)}
-                </p>
+                <p className="text-gray-500 text-xs mt-1">{getDurationLabel(service.duration)}</p>
               )}
               {service.visible === false && (
-                <span className="inline-block mt-2 px-2 py-0.5 bg-white/10 text-gray-400 text-xs rounded-full">
-                  Oculto
-                </span>
+                <span className="inline-block mt-2 px-2 py-0.5 bg-white/10 text-gray-400 text-xs rounded-full">Oculto</span>
               )}
             </CardContent>
           </Card>
