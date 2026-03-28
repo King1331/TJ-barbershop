@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   collection, getDocs, deleteDoc, updateDoc, doc, addDoc, serverTimestamp,
 } from "firebase/firestore";
@@ -295,6 +296,11 @@ export default function AppointmentsTab() {
 
   const [toast, setToast] = useState({ open: false, type: "confirmed" });
 
+  // delete modal — individual
+  const [deleteModal, setDeleteModal] = useState({ open: false, appointmentId: null, appointmentLabel: "" });
+  // bulk delete modal
+  const [bulkDeleteModal, setBulkDeleteModal] = useState({ open: false });
+
   const fetchAll = async () => {
     const [aSnap, sSnap, bSnap] = await Promise.all([
       getDocs(collection(db, "appointments")),
@@ -373,10 +379,17 @@ export default function AppointmentsTab() {
   };
 
   /* ── DELETE individual ── */
-  const handleDelete = async (id) => {
-    if (!confirm("¿Eliminar esta cita?")) return;
+  const handleDelete = (id) => {
     const appointment = appointments.find(a => a.id === id);
-    await deleteDoc(doc(db, "appointments", id));
+    const label = appointment ? `${appointment.client_name} — ${appointment.service_name}` : "esta cita";
+    setDeleteModal({ open: true, appointmentId: id, appointmentLabel: label });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { appointmentId } = deleteModal;
+    const appointment = appointments.find(a => a.id === appointmentId);
+    setDeleteModal({ open: false, appointmentId: null, appointmentLabel: "" });
+    await deleteDoc(doc(db, "appointments", appointmentId));
     if (appointment?.client_email) await sendCancellationEmail(appointment);
     setSelected(null);
     fetchAll();
@@ -384,9 +397,13 @@ export default function AppointmentsTab() {
   };
 
   /* ── DELETE bulk ── */
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (!bulkSelected.size) return;
-    if (!confirm(`¿Eliminar ${bulkSelected.size} cita(s)?`)) return;
+    setBulkDeleteModal({ open: true });
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setBulkDeleteModal({ open: false });
     setBulkDeleting(true);
     const toDelete = appointments.filter(a => bulkSelected.has(a.id));
     await Promise.all(toDelete.map(a => deleteDoc(doc(db, "appointments", a.id))));
@@ -432,6 +449,80 @@ export default function AppointmentsTab() {
         type={toast.type}
         onClose={() => setToast({ ...toast, open: false })}
       />
+
+      {/* DELETE INDIVIDUAL MODAL */}
+      {deleteModal.open && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <Trash2 size={22} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Eliminar cita</h3>
+                <p className="text-gray-400 text-xs">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              ¿Estás seguro que deseas eliminar la cita de{" "}
+              <span className="text-white font-semibold">"{deleteModal.appointmentLabel}"</span>?
+              Se enviará un correo de cancelación al cliente.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteModal({ open: false, appointmentId: null, appointmentLabel: "" })}
+                className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* BULK DELETE MODAL */}
+      {bulkDeleteModal.open && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.85)" }}>
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <Trash2 size={22} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">Eliminar citas</h3>
+                <p className="text-gray-400 text-xs">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              ¿Estás seguro que deseas eliminar{" "}
+              <span className="text-white font-semibold">{bulkSelected.size} cita{bulkSelected.size !== 1 ? "s" : ""}</span>?
+              Se enviará un correo de cancelación a cada cliente.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setBulkDeleteModal({ open: false })}
+                className="flex-1 border border-white/20 text-white py-2 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleBulkDeleteConfirm}
+                className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
+              >
+                Sí, eliminar {bulkSelected.size}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* METRICS */}
       <div className="grid grid-cols-3 gap-4">
@@ -660,7 +751,6 @@ export default function AppointmentsTab() {
 
                         <p className="text-sm text-gray-300">Precio: <span className="font-semibold text-white">{editData.service_price ? `₡${Number(editData.service_price).toLocaleString("es-CR")}` : "—"}</span></p>
 
-                        {/* FECHA CON DARK CALENDAR */}
                         <div className="flex flex-col gap-2">
                           <label className="text-xs text-gray-400">
                             Fecha{editData.date && <span className="text-white ml-2 font-semibold">{format(new Date(`${editData.date}T00:00:00`), "PPP", { locale: es })}</span>}
@@ -697,7 +787,6 @@ export default function AppointmentsTab() {
                           )}
                         </div>
 
-                        {/* HORA */}
                         <div className="flex flex-col gap-2">
                           <label className="text-xs text-gray-400">Hora — seleccionada: <span className="text-white font-semibold">{editData.time || "ninguna"}</span></label>
                           <SlotPicker date={editData.date} selectedTime={editData.time} appointments={appointments} excludeId={selected.id} onChange={slot => setEditData({...editData, time:slot})} serviceDuration={Number(services.find(s => s.id === editData.service_id)?.duration || editData.service_duration || 30)} />
